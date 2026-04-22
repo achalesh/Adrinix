@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, template=?, issue_date=?, due_date=?,
                     subtotal=?, tax_total=?, grand_total=?, notes=?,
                     is_recurring=?, recurrence_period=?, next_generation_date=?, recurrence_status=?, auto_send=?,
-                    public_token = IFNULL(public_token, ?)
+                    public_token = ?
                 WHERE id=? AND user_id=?
             ");
             $template = $data['template'] ?? 'minimal';
@@ -116,7 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
             $rec_stat = $data['recurrence_status'] ?? 'active';
             $auto_send = !empty($data['auto_send']) ? 1 : 0;
-            $token = bin2hex(random_bytes(32));
+            
+            // Get current token or generate new
+            $st = $conn->prepare("SELECT public_token FROM `{$invoicesTable}` WHERE id = ?");
+            $st->bind_param("i", $id); $st->execute();
+            $rt = $st->get_result()->fetch_assoc(); $st->close();
+            $token = !empty($rt['public_token']) ? $rt['public_token'] : bin2hex(random_bytes(32));
 
             $stmt->bind_param("sssssdddssissisiii",
                 $data['invoice_number'], $data['status'], $template,

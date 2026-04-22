@@ -287,18 +287,20 @@ export const InvoiceEditor = () => {
         if (data.public_token) {
           setInvoiceMeta(prev => ({ ...prev, public_token: data.public_token }));
         }
+        setIsSaving(false);
         if (!isEditMode) navigate(`/invoices/${data.invoice_id}`);
         return { success: true, token: data.public_token };
       } else {
         showToast('Error: ' + data.message, 'error');
+        setIsSaving(false);
         return { success: false };
       }
     } catch (e) { 
       console.error(e); 
       showToast('Network Error - could not reach the server', 'error'); 
+      setIsSaving(false);
+      return { success: false };
     }
-    setIsSaving(false);
-    return success;
   };
 
   // ── PDF Export ────────────────────────────────────────────────────────────────
