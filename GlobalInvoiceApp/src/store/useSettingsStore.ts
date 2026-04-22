@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { authFetch } from './useAuthStore';
+import { authFetch, useAuthStore } from './useAuthStore';
 import { API_BASE } from '../config/api';
 
 export interface TaxProfile {
