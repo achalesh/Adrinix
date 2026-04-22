@@ -1,0 +1,187 @@
+<?php
+// api/auth.php
+require_once 'db.php';
+
+$secret_key = "adrinix_super_secret_jwt_key_2026"; // In production, move to an env variable
+
+function createJWT($payload, $secret) {
+    $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+    $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+    $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payload)));
+    $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $secret, true);
+    $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+    return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $action = $data['action'] ?? '';
+
+    if ($action === 'login') {
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? '';
+
+        // 1. Check main owners table
+        $stmt = $conn->prepare("SELECT id, password_hash, company_name FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        if ($user = $res->fetch_assoc()) {
+            if (password_verify($password, $user['password_hash'])) {
+                // Owner Authentication Success
+                $jwt = createJWT(['user_id' => $user['id'], 'role' => 'Owner', 'exp' => time() + (86400 * 30)], $secret_key);
+                echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+                    'id' => $user['id'], 'name' => $user['company_name'] ?: 'Owner', 'role' => 'Owner'
+                ]]);
+                exit;
+            }
+        }
+        $stmt->close();
+
+        // 2. Check team_members table
+        $stmt = $conn->prepare("SELECT id, user_id, password_hash, name, role FROM team_members WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        if ($member = $res->fetch_assoc()) {
+            if (password_verify($password, $member['password_hash'])) {
+                // Member Authentication Success (Inherit parent user_id)
+                $jwt = createJWT(['user_id' => $member['user_id'], 'member_id' => $member['id'], 'role' => $member['role'], 'exp' => time() + (86400 * 30)], $secret_key);
+                echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+                    'id' => $member['id'], 'name' => $member['name'], 'role' => $member['role']
+                ]]);
+                exit;
+            }
+        }
+        $stmt->close();
+
+        echo json_encode(['status' => 'error', 'message' => 'Invalid email or password']);
+        exit;
+    }
+
+    if ($action === 'register') {
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? '';
+        $company = $data['company'] ?? '';
+
+        if (!$email || !$password) {
+            echo json_encode(['status' => 'error', 'message' => 'Email and Password required']);
+            exit;
+        }
+
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        
+        $stmt = $conn->prepare("INSERT INTO users (email, password_hash, company_name) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $email, $hash, $company);
+        
+        if ($stmt->execute()) {
+            // Auto Login
+            $user_id = $conn->insert_id;
+            $jwt = createJWT(['user_id' => $user_id, 'role' => 'Owner', 'exp' => time() + (86400 * 30)], $secret_key);
+            echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+                'id' => $user_id, 'name' => $company, 'role' => 'Owner'
+            ]]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Email already registered']);
+        }
+        $stmt->close();
+        exit;
+    }
+
+    if ($action === 'forgot_password') {
+        $email = $data['email'] ?? '';
+        if (!$email) {
+            echo json_encode(['status' => 'error', 'message' => 'Email required']);
+            exit;
+        }
+
+        // Check if user exists
+        $exists = false;
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        if ($stmt->get_result()->fetch_assoc()) $exists = true;
+        $stmt->close();
+
+        if (!$exists) {
+            $stmt = $conn->prepare("SELECT id FROM team_members WHERE email = ?");
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            if ($stmt->get_result()->fetch_assoc()) $exists = true;
+            $stmt->close();
+        }
+
+        if ($exists) {
+            // Generate token
+            $token = bin2hex(random_bytes(32));
+            
+            // Delete old tokens for clean state
+            $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
+            $del->bind_param("s", $email);
+            $del->execute();
+            
+            // Insert new token
+            $ins = $conn->prepare("INSERT INTO password_resets (email, token) VALUES (?, ?)");
+            $ins->bind_param("ss", $email, $token);
+            $ins->execute();
+
+            // Send Email
+            $resetLink = "http://localhost:5175/login?token=" . $token;
+            $subject = "Password Reset Request - Adrinix";
+            $message = "You requested a password reset.\n\nClick here to reset it:\n" . $resetLink . "\n\nIf you didn't request this, ignore this email.";
+            $headers = "From: noreply@adrinix.com";
+            
+            mail($email, $subject, $message, $headers);
+            
+            echo json_encode(['status' => 'success', 'message' => 'Recovery link sent! Check your email.']);
+        } else {
+            // Standard security practice: Don't reveal if email existed or not
+            echo json_encode(['status' => 'success', 'message' => 'Recovery link sent! Check your email.']);
+        }
+        exit;
+    }
+
+    if ($action === 'reset_password') {
+        $token = $data['token'] ?? '';
+        $newPassword = $data['password'] ?? '';
+
+        if (!$token || strlen($newPassword) < 6) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid data or password too short']);
+            exit;
+        }
+
+        // Validate token (must be under 1 hour old)
+        $stmt = $conn->prepare("SELECT email FROM password_resets WHERE token = ? AND created_at >= NOW() - INTERVAL 1 HOUR");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        if ($row = $res->fetch_assoc()) {
+            $email = $row['email'];
+            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+            
+            // Update users table
+            $upd1 = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
+            $upd1->bind_param("ss", $hash, $email);
+            $upd1->execute();
+            
+            // Update team_members table
+            $upd2 = $conn->prepare("UPDATE team_members SET password_hash = ? WHERE email = ?");
+            $upd2->bind_param("ss", $hash, $email);
+            $upd2->execute();
+            
+            // Consume token
+            $del = $conn->prepare("DELETE FROM password_resets WHERE token = ?");
+            $del->bind_param("s", $token);
+            $del->execute();
+
+            echo json_encode(['status' => 'success', 'message' => 'Password reset successfully!']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid or expired token']);
+        }
+        exit;
+    }
+}
+?>
