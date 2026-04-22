@@ -82,6 +82,12 @@ export const InvoiceEditor = () => {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get', id: Number(invoiceId) }),
         });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
+        }
+
         const data = await res.json();
         if (data.status === 'success') {
           const inv = data.data;
