@@ -27,7 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 2. Fetch specific company details (Master DB)
     $company = requireCompany($user_id);
-    $taxTable = t('tax_profiles');
+    $cid = $company['id'];
+    $taxTable = "c" . $cid . "_tax_profiles";
     
     // 3. Fetch tax profiles (Tenant DB)
     $stmt = $conn->prepare("SELECT id, name AS label, percentage AS rate_percentage FROM `{$taxTable}` WHERE user_id = ?");
@@ -85,7 +86,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // UPDATE EXISTING COMPANY
     $company = requireCompany($user_id);
     $cid = $company['id'];
-    $taxTable = t('tax_profiles');
+    $taxTable = "c" . $cid . "_tax_profiles"; // Explicit prefix to avoid global scope issues
 
     $conn->begin_transaction();
     try {
