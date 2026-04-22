@@ -1,17 +1,20 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
-import { Settings } from './pages/Settings';
-import { InvoiceEditor } from './pages/InvoiceEditor';
-import { InvoiceList } from './pages/InvoiceList';
-import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Clients } from './pages/Clients';
-import { Products } from './pages/Products';
 import { ToastProvider } from './components/ToastProvider';
+import { LoadingView } from './components/LoadingView';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { useSettingsStore } from './store/useSettingsStore';
+
+// Lazy load pages
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const InvoiceList = lazy(() => import('./pages/InvoiceList').then(m => ({ default: m.InvoiceList })));
+const InvoiceEditor = lazy(() => import('./pages/InvoiceEditor').then(m => ({ default: m.InvoiceEditor })));
+const Clients = lazy(() => import('./pages/Clients').then(m => ({ default: m.Clients })));
+const Products = lazy(() => import('./pages/Products').then(m => ({ default: m.Products })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 import './index.css';
 
 
@@ -89,19 +92,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        
-        {/* Protected Dashboard Routes */}
-        <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
-        <Route path="/invoices/new" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
-        <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
-        <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-        <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      </Routes>
+      <Suspense fallback={<LoadingView />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          
+          {/* Protected Dashboard Routes */}
+          <Route path="/" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
+          <Route path="/invoices/new" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
+          <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
+          <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+          <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

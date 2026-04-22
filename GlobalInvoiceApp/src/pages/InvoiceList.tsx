@@ -37,6 +37,7 @@ function fmtDate(d: string) {
 }
 
 export const InvoiceList: React.FC = () => {
+  const navigate = useNavigate();
   const { localization } = useSettingsStore();
   const { activeCompanyId } = useAuthStore();
   const { showToast } = useToastStore();
