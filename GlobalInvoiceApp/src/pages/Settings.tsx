@@ -600,6 +600,7 @@ export const Settings = () => {
                     {previewTemplate === 'branded' && <BrandedTemplate company={{...localCompany, logo: localCompany.logo || '/placeholder.png'}} localization={localLoc} {...mockInvoiceData} />}
                  </div>
               </div>
+           </div>
         </div>
       )}
         </>
