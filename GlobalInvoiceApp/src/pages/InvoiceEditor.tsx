@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -47,6 +47,7 @@ export const InvoiceEditor = () => {
     recurrence_period: 'monthly' as 'none' | 'weekly' | 'bi-weekly' | 'monthly' | 'yearly',
     next_generation_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     auto_send: false,
+    public_token: '',
   });
 
   const [showAdvancedDesign, setShowAdvancedDesign] = useState(false);
@@ -108,6 +109,7 @@ export const InvoiceEditor = () => {
             recurrence_period: inv.recurrence_period ?? 'monthly',
             next_generation_date: inv.next_generation_date?.split('T')[0] ?? inv.next_generation_date ?? '',
             auto_send: Boolean(Number(inv.auto_send)),
+            public_token: inv.public_token ?? '',
           });
           setClient({
             name: inv.client_name ?? '',
@@ -438,6 +440,25 @@ export const InvoiceEditor = () => {
     }
   };
 
+  const handleShareLink = async () => {
+    if (!isEditMode) {
+      const success = await handleSaveInvoice();
+      if (!success) return;
+      // After save, we'll be navigated, so the link will be available there
+      showToast('Draft saved. You can now copy the share link.', 'info');
+      return;
+    }
+    
+    if (!invoiceMeta.public_token) {
+      showToast('No share link available. Please save the invoice first.', 'warning');
+      return;
+    }
+
+    const url = `${window.location.origin}/portal/${activeCompanyId}/${invoiceMeta.public_token}`;
+    navigator.clipboard.writeText(url);
+    showToast('Client portal link copied to clipboard!', 'success');
+  };
+
   return (
     <div className={styles.editorContainer}>
       <header className={styles.headerActions}>
@@ -450,6 +471,10 @@ export const InvoiceEditor = () => {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn-secondary" onClick={handleOpenExternalPreview} title="Open full-screen preview in new tab">
             <ExternalLink size={16} /> Preview
+          </button>
+          
+          <button className="btn-secondary" onClick={handleShareLink} title="Copy shareable client portal link">
+            <Share2 size={16} /> Share Link
           </button>
 
           {/* PDF Download Button */}

@@ -12,6 +12,8 @@ interface InvoicePreviewProps {
   subtotal: number;
   taxBreakdown: Record<string, number>;
   grandTotal: number;
+  company?: any;
+  localization?: any;
 }
 
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({
@@ -20,9 +22,14 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   items,
   subtotal,
   taxBreakdown,
-  grandTotal
+  grandTotal,
+  company: propsCompany,
+  localization: propsLocalization
 }) => {
-  const { company, localization } = useSettingsStore();
+  const { company: storeCompany, localization: storeLocalization } = useSettingsStore();
+  
+  const company = propsCompany || storeCompany;
+  const localization = propsLocalization || storeLocalization;
   
   // Logic: 
   // 1. If invoice has a specific template other than 'minimal', use it.

@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $clientsTable = t('clients');
     
     $stmt = $conn->prepare("
-        SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total, i.is_recurring,
+        SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total, i.is_recurring, i.public_token,
                c.name AS client_name
         FROM `{$invoicesTable}` i
         LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
@@ -97,7 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("
                 UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, template=?, issue_date=?, due_date=?,
                     subtotal=?, tax_total=?, grand_total=?, notes=?,
-                    is_recurring=?, recurrence_period=?, next_generation_date=?, recurrence_status=?, auto_send=?
+                    is_recurring=?, recurrence_period=?, next_generation_date=?, recurrence_status=?, auto_send=?,
+                    public_token = IFNULL(public_token, ?)
                 WHERE id=? AND user_id=?
             ");
             $template = $data['template'] ?? 'minimal';
@@ -106,13 +107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
             $rec_stat = $data['recurrence_status'] ?? 'active';
             $auto_send = !empty($data['auto_send']) ? 1 : 0;
+            $token = bin2hex(random_bytes(32));
 
-            $stmt->bind_param("sssssdddssissiii",
+            $stmt->bind_param("sssssdddssissisiii",
                 $data['invoice_number'], $data['status'], $template,
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
                 $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send,
-                $id, $user_id
+                $token, $id, $user_id
             );
             $stmt->execute(); $stmt->close();
 
@@ -154,8 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $si = $conn->prepare("
-            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, is_recurring, recurrence_period, next_generation_date, recurrence_status, auto_send)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, is_recurring, recurrence_period, next_generation_date, recurrence_status, auto_send, public_token)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $status = 'Draft';
         $template = $data['template'] ?? 'minimal';
@@ -164,12 +166,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
         $rec_stat = $data['recurrence_status'] ?? 'active';
         $auto_send = !empty($data['auto_send']) ? 1 : 0;
+        $token = bin2hex(random_bytes(32));
 
-        $si->bind_param("iiisssssdddssisi",
+        $si->bind_param("iiisssssdddssisis",
             $user_id, $client_id, $data['invoice_number'], $status, $template,
             $data['issue_date'], $data['due_date'],
             $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
-            $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send
+            $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send, $token
         );
         $si->execute(); $invoice_id = $conn->insert_id; $si->close();
 

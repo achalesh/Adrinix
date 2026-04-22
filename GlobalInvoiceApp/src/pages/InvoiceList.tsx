@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Plus, Edit2, Trash2, Search,
-  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw
+  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -19,6 +19,7 @@ interface Invoice {
   due_date: string;
   grand_total: number;
   is_recurring: number | boolean;
+  public_token?: string;
 }
 
 const STATUS_LIST = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Recurring'] as const;
@@ -97,7 +98,16 @@ export const InvoiceList: React.FC = () => {
       showToast('Failed to update status', 'error');
     }
   };
-
+  const handleShare = (inv: Invoice, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!inv.public_token) {
+      showToast('No share link available for this invoice.', 'error');
+      return;
+    }
+    const url = `${window.location.origin}/portal/${activeCompanyId}/${inv.public_token}`;
+    navigator.clipboard.writeText(url);
+    showToast('Client portal link copied to clipboard!', 'success');
+  };
   const filtered = useMemo(() => invoices.filter(inv => {
     const q = search.toLowerCase();
     const matchSearch = !q || inv.invoice_number.toLowerCase().includes(q) ||
@@ -245,6 +255,13 @@ export const InvoiceList: React.FC = () => {
                             onClick={() => navigate(`/invoices/${inv.id}`)}
                           >
                             <Edit2 size={14} />
+                          </button>
+                          <button
+                            className={styles.iconBtn}
+                            title="Copy Share Link"
+                            onClick={(e) => handleShare(inv, e)}
+                          >
+                            <Share2 size={14} />
                           </button>
                           <button
                             className={`${styles.iconBtn} ${styles.iconBtnDanger}`}

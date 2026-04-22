@@ -16,6 +16,7 @@ const Products = lazy(() => import('./pages/Products').then(m => ({ default: m.P
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const InvoiceViewPage = lazy(() => import('./pages/InvoiceViewPage').then(m => ({ default: m.InvoiceViewPage })));
+const ClientPortal = lazy(() => import('./pages/ClientPortal').then(m => ({ default: m.ClientPortal })));
 import './index.css';
 
 
@@ -116,6 +117,9 @@ function App() {
           <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          
+          {/* Public Portal Route */}
+          <Route path="/portal/:companyId/:token" element={<ClientPortal />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
