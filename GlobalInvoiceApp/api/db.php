@@ -1,5 +1,44 @@
 <?php
 // api/db.php
+
+/**
+ * Polyfill for getallheaders() if not running on Apache
+ */
+if (!function_exists('getallheaders')) {
+    function getallheaders() {
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+}
+
+/**
+ * Global Error/Exception Handlers for JSON Output
+ * This prevents the frontend from crashing on raw PHP errors.
+ */
+set_exception_handler(function($e) {
+    http_response_code(500);
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Backend Exception: ' . $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ]);
+    exit;
+});
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (!(error_reporting() & $errno)) return false;
+    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+});
+
+// Enable mysqli exceptions for cleaner error catching
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Company-Id");
