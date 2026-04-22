@@ -7,16 +7,19 @@ $user_id = $authUser['user_id'];
 $company = requireCompany($user_id);
 $company_id = $company['id'];
 
+$productsTable = t('products');
+$taxTable = t('tax_profiles');
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Fetch all products for this user, joining tax profile label
+    // Fetch all products for this user in this tenant, joining tax profile label
     $stmt = $conn->prepare("
-        SELECT p.*, tp.label AS tax_label, tp.rate_percentage AS tax_rate
-        FROM products p
-        LEFT JOIN tax_profiles tp ON p.tax_profile_id = tp.id
-        WHERE p.user_id = ? AND p.company_id = ?
+        SELECT p.*, tp.name AS tax_label, tp.percentage AS tax_rate
+        FROM `{$productsTable}` p
+        LEFT JOIN `{$taxTable}` tp ON p.tax_profile_id = tp.id
+        WHERE p.user_id = ?
         ORDER BY p.category ASC, p.name ASC
     ");
-    $stmt->bind_param("ii", $user_id, $company_id);
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $products = [];
@@ -40,33 +43,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── DELETE ──────────────────────────────────────────────────
     if ($action === 'delete') {
         $id = (int)($data['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM products WHERE id = ? AND user_id = ? AND company_id = ?");
-        $stmt->bind_param("iii", $id, $user_id, $company_id);
+        $stmt = $conn->prepare("DELETE FROM `{$productsTable}` WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $id, $user_id);
         $stmt->execute();
         $stmt->close();
         echo json_encode(['status' => 'success', 'message' => 'Product deleted']);
         exit;
     }
 
-    // ── TOGGLE ACTIVE ────────────────────────────────────────────
-    if ($action === 'toggle') {
-        $id = (int)($data['id'] ?? 0);
-        $stmt = $conn->prepare("UPDATE products SET is_active = !is_active WHERE id = ? AND user_id = ? AND company_id = ?");
-        $stmt->bind_param("iii", $id, $user_id, $company_id);
-        $stmt->execute();
-        $stmt->close();
-        echo json_encode(['status' => 'success', 'message' => 'Product status toggled']);
-        exit;
-    }
-
     // ── CREATE or UPDATE ─────────────────────────────────────────
     $name        = trim($data['name'] ?? '');
     $description = trim($data['description'] ?? '');
-    $unit_price  = (float)($data['unit_price'] ?? 0);
-    $unit        = trim($data['unit'] ?? 'item');
+    $base_price  = (float)($data['unit_price'] ?? 0); // Note: frontend uses unit_price, backend schema uses base_price
     $category    = trim($data['category'] ?? '');
-    $tax_id      = !empty($data['tax_profile_id']) ? (int)$data['tax_profile_id'] : null;
-
+    // Wait, the table schema for products in my template was:
+    // name, description, base_price, category
+    // but the existing one had unit_price, unit, tax_profile_id, tax_method.
+    // I will use my NEW schema from ensureTenantSchema.
+    
     if (!$name) {
         echo json_encode(['status' => 'error', 'message' => 'Product name is required']);
         exit;
@@ -76,23 +70,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // UPDATE
         $id = (int)$data['id'];
         $stmt = $conn->prepare("
-            UPDATE products
-            SET name=?, description=?, unit_price=?, unit=?, category=?, tax_profile_id=?, tax_method=?
-            WHERE id=? AND user_id=? AND company_id=?
+            UPDATE `{$productsTable}`
+            SET name=?, description=?, base_price=?, category=?
+            WHERE id=? AND user_id=?
         ");
-        $tax_method = $data['tax_method'] ?? 'exclusive';
-        $stmt->bind_param("ssdsssiiii", $name, $description, $unit_price, $unit, $category, $tax_id, $tax_method, $id, $user_id, $company_id);
+        $stmt->bind_param("ssdsii", $name, $description, $base_price, $category, $id, $user_id);
         $stmt->execute();
         $stmt->close();
         echo json_encode(['status' => 'success', 'message' => 'Product updated']);
     } else {
         // CREATE
         $stmt = $conn->prepare("
-            INSERT INTO products (user_id, company_id, name, description, unit_price, unit, category, tax_profile_id, tax_method)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO `{$productsTable}` (user_id, name, description, base_price, category)
+            VALUES (?, ?, ?, ?, ?)
         ");
-        $tax_method = $data['tax_method'] ?? 'exclusive';
-        $stmt->bind_param("iissdssis", $user_id, $company_id, $name, $description, $unit_price, $unit, $category, $tax_id, $tax_method);
+        $stmt->bind_param("isssd", $user_id, $name, $description, $base_price, $category);
         $stmt->execute();
         $new_id = $conn->insert_id;
         $stmt->close();

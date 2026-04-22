@@ -13,6 +13,18 @@ function createJWT($payload, $secret) {
     return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
 }
 
+function issueRefreshToken($conn, $user_id, $member_id = null) {
+    $token = bin2hex(random_bytes(32));
+    $expires = date('Y-m-d H:i:s', time() + (86400 * 30)); // 30 days
+    
+    $stmt = $conn->prepare("INSERT INTO refresh_tokens (user_id, member_id, token, expires_at) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("iiss", $user_id, $member_id, $token, $expires);
+    $stmt->execute();
+    $stmt->close();
+    
+    return $token;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $action = $data['action'] ?? '';
@@ -30,8 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user = $res->fetch_assoc()) {
             if (password_verify($password, $user['password_hash'])) {
                 // Owner Authentication Success
-                $jwt = createJWT(['user_id' => $user['id'], 'role' => 'Owner', 'exp' => time() + (86400 * 30)], $secret_key);
-                echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+                $access_token = createJWT(['user_id' => $user['id'], 'role' => 'Owner', 'exp' => time() + 3600], $secret_key);
+                $refresh_token = issueRefreshToken($conn, $user['id']);
+                
+                echo json_encode(['status' => 'success', 'token' => $access_token, 'refreshToken' => $refresh_token, 'user' => [
                     'id' => $user['id'], 'name' => $user['company_name'] ?: 'Owner', 'role' => 'Owner'
                 ]]);
                 exit;
@@ -48,8 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($member = $res->fetch_assoc()) {
             if (password_verify($password, $member['password_hash'])) {
                 // Member Authentication Success (Inherit parent user_id)
-                $jwt = createJWT(['user_id' => $member['user_id'], 'member_id' => $member['id'], 'role' => $member['role'], 'exp' => time() + (86400 * 30)], $secret_key);
-                echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+                $access_token = createJWT(['user_id' => $member['user_id'], 'member_id' => $member['id'], 'role' => $member['role'], 'exp' => time() + 3600], $secret_key);
+                $refresh_token = issueRefreshToken($conn, $member['user_id'], $member['id']);
+
+                echo json_encode(['status' => 'success', 'token' => $access_token, 'refreshToken' => $refresh_token, 'user' => [
                     'id' => $member['id'], 'name' => $member['name'], 'role' => $member['role']
                 ]]);
                 exit;
@@ -79,8 +95,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             // Auto Login
             $user_id = $conn->insert_id;
-            $jwt = createJWT(['user_id' => $user_id, 'role' => 'Owner', 'exp' => time() + (86400 * 30)], $secret_key);
-            echo json_encode(['status' => 'success', 'token' => $jwt, 'user' => [
+            
+            // Create Default Company for new user
+            $c_stmt = $conn->prepare("INSERT INTO companies (user_id, name) VALUES (?, ?)");
+            $c_stmt->bind_param("is", $user_id, $company);
+            $c_stmt->execute();
+            $company_id = $conn->insert_id;
+            $c_stmt->close();
+
+            // Provision Tenant Tables immediately
+            ensureTenantSchema($conn, $company_id);
+
+            $access_token = createJWT(['user_id' => $user_id, 'role' => 'Owner', 'exp' => time() + 3600], $secret_key);
+            $refresh_token = issueRefreshToken($conn, $user_id);
+            
+            echo json_encode(['status' => 'success', 'token' => $access_token, 'refreshToken' => $refresh_token, 'user' => [
                 'id' => $user_id, 'name' => $company, 'role' => 'Owner'
             ]]);
         } else {
@@ -181,6 +210,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Invalid or expired token']);
         }
+        exit;
+    }
+
+    if ($action === 'refresh') {
+        $refreshToken = $data['refreshToken'] ?? '';
+        if (!$refreshToken) {
+            echo json_encode(['status' => 'error', 'message' => 'Refresh token required']);
+            exit;
+        }
+
+        $stmt = $conn->prepare("SELECT user_id, member_id FROM refresh_tokens WHERE token = ? AND expires_at > NOW()");
+        $stmt->bind_param("s", $refreshToken);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        if ($row = $res->fetch_assoc()) {
+            // Issue new access token
+            $payload = [
+                'user_id' => $row['user_id'],
+                'role' => $row['member_id'] ? 'Member' : 'Owner', // Basic role detection
+                'exp' => time() + 3600
+            ];
+            if ($row['member_id']) $payload['member_id'] = $row['member_id'];
+            
+            $access_token = createJWT($payload, $secret_key);
+            echo json_encode(['status' => 'success', 'token' => $access_token]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid or expired refresh token']);
+        }
+        $stmt->close();
         exit;
     }
 }

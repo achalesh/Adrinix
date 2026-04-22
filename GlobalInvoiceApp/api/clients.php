@@ -7,10 +7,12 @@ $user_id = $authUser['user_id'];
 $company = requireCompany($user_id);
 $company_id = $company['id'];
 
+$clientsTable = t('clients');
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // List all clients for the authorized user
-    $stmt = $conn->prepare("SELECT id, name, email, phone, tax_id, billing_address, created_at FROM clients WHERE user_id = ? AND company_id = ? ORDER BY name ASC");
-    $stmt->bind_param("ii", $user_id, $company_id);
+    // List all clients for the authorized user in this tenant
+    $stmt = $conn->prepare("SELECT id, name, email, phone, billing_address, created_at FROM `{$clientsTable}` WHERE user_id = ? ORDER BY name ASC");
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -27,8 +29,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($data['action']) && $data['action'] === 'delete') {
         // Delete Client
         $client_id = $data['id'];
-        $stmt = $conn->prepare("DELETE FROM clients WHERE id = ? AND user_id = ? AND company_id = ?");
-        $stmt->bind_param("iii", $client_id, $user_id, $company_id);
+        $stmt = $conn->prepare("DELETE FROM `{$clientsTable}` WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $client_id, $user_id);
         
         if($stmt->execute()) {
             echo json_encode(['status' => 'success', 'message' => 'Client removed securely']);
@@ -40,7 +42,6 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $data['name'] ?? '';
         $email = $data['email'] ?? '';
         $phone = $data['phone'] ?? '';
-        $tax_id = $data['tax_id'] ?? '';
         $billing_address = $data['billing_address'] ?? '';
         
         if (!$name) {
@@ -50,8 +51,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (isset($data['id']) && $data['id']) {
             // Update Existing Client
-            $stmt = $conn->prepare("UPDATE clients SET name = ?, email = ?, phone = ?, tax_id = ?, billing_address = ? WHERE id = ? AND user_id = ? AND company_id = ?");
-            $stmt->bind_param("sssssiii", $name, $email, $phone, $tax_id, $billing_address, $data['id'], $user_id, $company_id);
+            $stmt = $conn->prepare("UPDATE `{$clientsTable}` SET name = ?, email = ?, phone = ?, billing_address = ? WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("ssssii", $name, $email, $phone, $billing_address, $data['id'], $user_id);
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'Client updated successfully']);
             } else {
@@ -59,8 +60,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Insert New Client
-            $stmt = $conn->prepare("INSERT INTO clients (user_id, company_id, name, email, phone, tax_id, billing_address) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("iisssss", $user_id, $company_id, $name, $email, $phone, $tax_id, $billing_address);
+            $stmt = $conn->prepare("INSERT INTO `{$clientsTable}` (user_id, name, email, phone, billing_address) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("issss", $user_id, $name, $email, $phone, $billing_address);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'New client securely created', 'client_id' => $conn->insert_id]);

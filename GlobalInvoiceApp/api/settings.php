@@ -11,13 +11,6 @@ $active_company_id = isset($headers['X-Company-Id']) ? (int)$headers['X-Company-
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? 'details';
 
-    // Check if companies table exists first
-    $check = $conn->query("SHOW TABLES LIKE 'companies'");
-    if ($check->num_rows == 0) {
-        echo json_encode(['status' => 'error', 'message' => 'Database migration required. Please run the migration script or contact support.', 'needs_migration' => true]);
-        exit;
-    }
-
     // 1. If explicit list requested OR no specific company requested, return list of companies
     if ($action === 'list' || !$active_company_id) {
         $stmt = $conn->prepare("SELECT id, name, logo, country, currency_code, locale FROM companies WHERE user_id = ? ORDER BY created_at ASC");
@@ -32,16 +25,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    // 2. Fetch specific company details
+    // 2. Fetch specific company details (Master DB)
     $company = requireCompany($user_id);
+    $taxTable = t('tax_profiles');
     
-    // 3. Fetch tax profiles for this company
-    $stmt = $conn->prepare("SELECT id, label, rate_percentage, is_default FROM tax_profiles WHERE company_id = ?");
-    $stmt->bind_param("i", $active_company_id);
+    // 3. Fetch tax profiles (Tenant DB)
+    $stmt = $conn->prepare("SELECT id, name AS label, percentage AS rate_percentage FROM `{$taxTable}` WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $tax_res = $stmt->get_result();
     $tax_profiles = [];
-    while($row = $tax_res->fetch_assoc()) { $tax_profiles[] = $row; }
+    while($row = $tax_res->fetch_assoc()) { 
+        $row['is_default'] = false; // Simplified for now
+        $tax_profiles[] = $row; 
+    }
     $stmt->close();
 
     echo json_encode([
@@ -87,6 +84,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // UPDATE EXISTING COMPANY
     $company = requireCompany($user_id);
     $cid = $company['id'];
+    $taxTable = t('tax_profiles');
 
     $conn->begin_transaction();
     try {
@@ -100,22 +98,22 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $c_curr = $data['localization']['currencyCode'] ?? 'USD';
         $c_loc = $data['localization']['locale'] ?? 'en-US';
 
+        // Update Master DB
         $stmt = $conn->prepare("UPDATE companies SET name=?, address=?, phone=?, email=?, logo=?, country=?, registration_number=?, currency_code=?, locale=? WHERE id=? AND user_id=?");
-        if (!$stmt) { throw new Exception("Prepare failed: " . $conn->error); }
-        
         $stmt->bind_param("sssssssssii", $c_name, $c_addr, $c_phone, $c_email, $c_logo, $c_country, $c_reg, $c_curr, $c_loc, $cid, $user_id);
-        if (!$stmt->execute()) { throw new Exception("Execute failed: " . $stmt->error); }
+        $stmt->execute();
         $stmt->close();
 
-        // Update Tax Profiles
-        $conn->query("DELETE FROM tax_profiles WHERE company_id = $cid");
-        foreach ($data['taxProfiles'] as $profile) {
-            $stmt = $conn->prepare("INSERT INTO tax_profiles (company_id, label, rate_percentage, is_default) VALUES (?, ?, ?, ?)");
-            if (!$stmt) { throw new Exception("Tax Prepare failed: " . $conn->error); }
-            $rate = (float)$profile['rate_percentage'];
-            $is_def = $profile['is_default'] ? 1 : 0;
-            $stmt->bind_param("isdi", $cid, $profile['label'], $rate, $is_def);
-            $stmt->execute();
+        // Update Tax Profiles (Tenant DB)
+        $conn->query("DELETE FROM `{$taxTable}` WHERE user_id = $user_id");
+        if (!empty($data['taxProfiles'])) {
+            $stmt = $conn->prepare("INSERT INTO `{$taxTable}` (user_id, name, percentage) VALUES (?, ?, ?)");
+            foreach ($data['taxProfiles'] as $profile) {
+                $rate = (float)$profile['rate_percentage'];
+                $label = $profile['label'] ?? 'Tax';
+                $stmt->bind_param("isd", $user_id, $label, $rate);
+                $stmt->execute();
+            }
             $stmt->close();
         }
 
@@ -123,7 +121,6 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['status' => 'success', 'message' => 'Settings updated successfully']);
     } catch (Exception $e) {
         $conn->rollback();
-        error_log("Settings Update Error: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
     exit;

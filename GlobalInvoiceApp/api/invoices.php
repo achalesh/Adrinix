@@ -8,14 +8,17 @@ $company = requireCompany($user_id);
 $company_id = $company['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $invoicesTable = t('invoices');
+    $clientsTable = t('clients');
+    
     $stmt = $conn->prepare("
         SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.grand_total,
                c.name AS client_name
-        FROM invoices i
-        LEFT JOIN clients c ON i.client_id = c.id
-        WHERE i.user_id = ? AND i.company_id = ? ORDER BY i.created_at DESC
+        FROM `{$invoicesTable}` i
+        LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
+        WHERE i.user_id = ? ORDER BY i.created_at DESC
     ");
-    $stmt->bind_param("ii", $user_id, $company_id);
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $invoices = [];
@@ -30,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$data) { echo json_encode(['status' => 'error', 'message' => 'Invalid data']); exit; }
 
     $action = $data['action'] ?? 'create';
+    $invoicesTable = t('invoices');
+    $clientsTable = t('clients');
+    $itemsTable = t('invoice_items');
 
     // ── FETCH SINGLE INVOICE with items & client ──────────────────────────────
     if ($action === 'get') {
@@ -37,16 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("
             SELECT i.*, c.name AS client_name, c.email AS client_email,
                    c.billing_address AS client_address, c.id AS client_id
-            FROM invoices i LEFT JOIN clients c ON i.client_id = c.id
-            WHERE i.id = ? AND i.user_id = ? AND i.company_id = ?
+            FROM `{$invoicesTable}` i LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
+            WHERE i.id = ? AND i.user_id = ?
         ");
-        $stmt->bind_param("iii", $id, $user_id, $company_id);
+        $stmt->bind_param("ii", $id, $user_id);
         $stmt->execute();
         $invoice = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if (!$invoice) { echo json_encode(['status' => 'error', 'message' => 'Not found']); exit; }
 
-        $stmt2 = $conn->prepare("SELECT id, description, quantity, unit_price, tax_method, tax_profile_id FROM invoice_items WHERE invoice_id = ?");
+        $stmt2 = $conn->prepare("SELECT id, description, quantity, unit_price, tax_method, tax_profile_id FROM `{$itemsTable}` WHERE invoice_id = ?");
         $stmt2->bind_param("i", $id);
         $stmt2->execute();
         $result2 = $stmt2->get_result();
@@ -66,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($status, ['Draft','Sent','Paid','Overdue'])) {
             echo json_encode(['status' => 'error', 'message' => 'Invalid status']); exit;
         }
-        $stmt = $conn->prepare("UPDATE invoices SET status=? WHERE id=? AND user_id=? AND company_id=?");
-        $stmt->bind_param("siii", $status, $id, $user_id, $company_id);
+        $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET status=? WHERE id=? AND user_id=?");
+        $stmt->bind_param("sii", $status, $id, $user_id);
         $stmt->execute(); $stmt->close();
         echo json_encode(['status' => 'success', 'message' => 'Status updated']);
         exit;
@@ -76,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ── DELETE ─────────────────────────────────────────────────────────────────
     if ($action === 'delete') {
         $id = (int)($data['id'] ?? 0);
-        $stmt = $conn->prepare("DELETE FROM invoices WHERE id=? AND user_id=? AND company_id=?");
-        $stmt->bind_param("iii", $id, $user_id, $company_id);
+        $stmt = $conn->prepare("DELETE FROM `{$invoicesTable}` WHERE id=? AND user_id=?");
+        $stmt->bind_param("ii", $id, $user_id);
         $stmt->execute(); $stmt->close();
         echo json_encode(['status' => 'success', 'message' => 'Invoice deleted']);
         exit;
@@ -89,24 +95,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare("
-                UPDATE invoices SET invoice_number=?, status=?, issue_date=?, due_date=?,
+                UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, issue_date=?, due_date=?,
                     subtotal=?, tax_total=?, grand_total=?, notes=?
-                WHERE id=? AND user_id=? AND company_id=?
+                WHERE id=? AND user_id=?
             ");
-            $stmt->bind_param("ssssdddsiii",
+            $stmt->bind_param("ssssdddsii",
                 $data['invoice_number'], $data['status'],
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
-                $id, $user_id, $company_id
+                $id, $user_id
             );
             $stmt->execute(); $stmt->close();
 
             // Replace items
-            $del = $conn->prepare("DELETE FROM invoice_items WHERE invoice_id=?");
+            $del = $conn->prepare("DELETE FROM `{$itemsTable}` WHERE invoice_id=?");
             $del->bind_param("i", $id); $del->execute(); $del->close();
 
             if (!empty($data['items'])) {
-                $si = $conn->prepare("INSERT INTO invoice_items (invoice_id,description,quantity,unit_price,tax_method,tax_profile_id) VALUES (?,?,?,?,?,?)");
+                $si = $conn->prepare("INSERT INTO `{$itemsTable}` (invoice_id,description,quantity,unit_price,tax_method,tax_profile_id) VALUES (?,?,?,?,?,?)");
                 foreach ($data['items'] as $item) {
                     $desc = $item['description']; $qty = (int)$item['quantity'];
                     $price = (float)$item['unit_price'];
@@ -133,30 +139,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($data['client']['id'])) {
             $client_id = (int)$data['client']['id'];
         } else {
-            $sc = $conn->prepare("INSERT INTO clients (user_id, company_id, name, email, billing_address) VALUES (?,?,?,?,?)");
-            $sc->bind_param("iisss", $user_id, $company_id, $data['client']['name'], $data['client']['email'], $data['client']['address']);
+            $sc = $conn->prepare("INSERT INTO `{$clientsTable}` (user_id, name, email, billing_address) VALUES (?,?,?,?)");
+            $sc->bind_param("isss", $user_id, $data['client']['name'], $data['client']['email'], $data['client']['address']);
             $sc->execute(); $client_id = $conn->insert_id; $sc->close();
         }
 
         $si = $conn->prepare("
-            INSERT INTO invoices (user_id, company_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
         ");
         $status = 'Draft';
-        $si->bind_param("iiissssddds",
-            $user_id, $company_id, $client_id, $data['invoice_number'], $status,
+        $si->bind_param("iiissssddd",
+            $user_id, $client_id, $data['invoice_number'], $status,
             $data['issue_date'], $data['due_date'],
             $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes']
         );
         $si->execute(); $invoice_id = $conn->insert_id; $si->close();
 
         if (!empty($data['items'])) {
-            $sit = $conn->prepare("INSERT INTO invoice_items (invoice_id,description,quantity,unit_price,tax_method,tax_profile_id) VALUES (?,?,?,?,?,?)");
+            $sit = $conn->prepare("INSERT INTO `{$itemsTable}` (invoice_id,description,quantity,unit_price,tax_method,tax_profile_id) VALUES (?,?,?,?,?,?)");
             foreach ($data['items'] as $item) {
                 $desc = $item['description']; $qty = (int)$item['quantity'];
                 $price = (float)$item['unit_price'];
                 $meth = $item['tax_method'] ?? 'exclusive';
-                $tax_id = !empty($item['tax_profile_id']) ? $item['tax_profile_id'] : null;
+                $tax_id = !empty($item['tax_profile_id']) ? (int)$item['tax_profile_id'] : null;
                 $sit->bind_param("isidsi", $invoice_id, $desc, $qty, $price, $meth, $tax_id);
                 $sit->execute();
             }

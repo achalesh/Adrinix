@@ -59,7 +59,7 @@ export const Login = () => {
       
       if (data.status === 'success') {
         if (mode === 'login' || mode === 'register') {
-          login(data.token, data.user);
+          login(data.token, data.refreshToken, data.user);
           navigate('/');
         } else if (mode === 'forgot') {
           setSuccess(data.message);
@@ -79,7 +79,7 @@ export const Login = () => {
   };
 
   const handleDemoLogin = () => {
-    login('demo-token-123', { id: 1, name: company || 'Demo Business', role: 'Owner' });
+    login('demo-token-123', 'demo-refresh-123', { id: 1, name: company || 'Demo Business', role: 'Owner' });
     navigate('/');
   };
 

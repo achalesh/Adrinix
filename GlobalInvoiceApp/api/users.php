@@ -4,6 +4,7 @@ require_once 'db.php';
 
 $authUser = authenticate();
 $user_id = $authUser['user_id'];
+$company = requireCompany($user_id); // Initialize tenant prefix
 
 // Only allow Owners and Admins to manage users
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $authUser['role'] !== 'Owner' && $authUser['role'] !== 'Admin') {
@@ -12,9 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $authUser['role'] !== 'Owner' && $a
     exit();
 }
 
+$teamTable = t('team_members');
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // List all team members under the current account
-    $stmt = $conn->prepare("SELECT id, name, email, role, created_at FROM team_members WHERE user_id = ? ORDER BY created_at DESC");
+    // List all team members for this tenant
+    $stmt = $conn->prepare("SELECT id, name, email, role, created_at FROM `{$teamTable}` WHERE user_id = ? ORDER BY created_at DESC");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -32,7 +35,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($data['action']) && $data['action'] === 'delete') {
         // Delete member
         $member_id = $data['id'];
-        $stmt = $conn->prepare("DELETE FROM team_members WHERE id = ? AND user_id = ?");
+        $stmt = $conn->prepare("DELETE FROM `{$teamTable}` WHERE id = ? AND user_id = ?");
         $stmt->bind_param("ii", $member_id, $user_id);
         
         if($stmt->execute()) {
@@ -48,7 +51,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (isset($data['id'])) {
             // Update
-            $stmt = $conn->prepare("UPDATE team_members SET name = ?, email = ?, role = ? WHERE id = ? AND user_id = ?");
+            $stmt = $conn->prepare("UPDATE `{$teamTable}` SET name = ?, email = ?, role = ? WHERE id = ? AND user_id = ?");
             $stmt->bind_param("sssii", $name, $email, $role, $data['id'], $user_id);
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'Member updated']);
@@ -58,7 +61,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Insert
             $password = password_hash($data['password'] ?? 'default123', PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO team_members (user_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO `{$teamTable}` (user_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)");
             $stmt->bind_param("issss", $user_id, $name, $email, $password, $role);
             
             if ($stmt->execute()) {

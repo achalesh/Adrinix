@@ -13,6 +13,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
+$invoicesTable = t('invoices');
+$clientsTable = t('clients');
+
 // --- 1. Invoice Stats ---
 $stmt = $conn->prepare("
     SELECT 
@@ -26,10 +29,10 @@ $stmt = $conn->prepare("
         COUNT(CASE WHEN status = 'Draft' THEN 1 END) AS draft_count,
         COUNT(CASE WHEN status = 'Overdue' THEN 1 END) AS overdue_count,
         COUNT(CASE WHEN status = 'Sent' THEN 1 END) AS sent_count
-    FROM invoices 
-    WHERE user_id = ? AND company_id = ?
+    FROM `{$invoicesTable}`
+    WHERE user_id = ?
 ");
-$stmt->bind_param("ii", $user_id, $company_id);
+$stmt->bind_param("i", $user_id);
 $stmt->execute();
 $stats = $stmt->get_result()->fetch_assoc();
 $stmt->close();
@@ -40,8 +43,8 @@ foreach(['total_revenue', 'paid_revenue', 'draft_revenue', 'overdue_revenue', 's
 }
 
 // --- 2. Client Count ---
-$stmt2 = $conn->prepare("SELECT COUNT(*) AS total_clients FROM clients WHERE user_id = ? AND company_id = ?");
-$stmt2->bind_param("ii", $user_id, $company_id);
+$stmt2 = $conn->prepare("SELECT COUNT(*) AS total_clients FROM `{$clientsTable}` WHERE user_id = ?");
+$stmt2->bind_param("i", $user_id);
 $stmt2->execute();
 $clientStats = $stmt2->get_result()->fetch_assoc();
 $stmt2->close();
@@ -50,13 +53,13 @@ $stmt2->close();
 $stmt3 = $conn->prepare("
     SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.grand_total,
            c.name AS client_name
-    FROM invoices i
-    LEFT JOIN clients c ON i.client_id = c.id
-    WHERE i.user_id = ? AND i.company_id = ?
+    FROM `{$invoicesTable}` i
+    LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
+    WHERE i.user_id = ?
     ORDER BY i.created_at DESC
     LIMIT 5
 ");
-$stmt3->bind_param("ii", $user_id, $company_id);
+$stmt3->bind_param("i", $user_id);
 $stmt3->execute();
 $recentResult = $stmt3->get_result();
 $recentInvoices = [];
@@ -72,12 +75,12 @@ $stmt4 = $conn->prepare("
         DATE_FORMAT(issue_date, '%b %Y') AS month_label,
         DATE_FORMAT(issue_date, '%Y-%m') AS month_key,
         COALESCE(SUM(grand_total), 0) AS revenue
-    FROM invoices
-    WHERE user_id = ? AND company_id = ? AND issue_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+    FROM `{$invoicesTable}`
+    WHERE user_id = ? AND issue_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
     GROUP BY month_key, month_label
     ORDER BY month_key ASC
 ");
-$stmt4->bind_param("ii", $user_id, $company_id);
+$stmt4->bind_param("i", $user_id);
 $stmt4->execute();
 $monthlyResult = $stmt4->get_result();
 $monthlyRevenue = [];
