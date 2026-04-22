@@ -23,7 +23,9 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   grandTotal
 }) => {
   const { company, localization } = useSettingsStore();
-  const template = invoiceMeta.template || 'minimal';
+  
+  // Use invoice-specific template, fallback to company default, or 'minimal'
+  const template = invoiceMeta.template || company?.defaultTemplate || 'minimal';
 
   // Template props bundle
   const templateProps = {

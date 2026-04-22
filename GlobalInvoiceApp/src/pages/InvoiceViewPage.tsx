@@ -44,7 +44,8 @@ export const InvoiceViewPage = () => {
             issue_date: inv.issue_date,
             due_date: inv.due_date,
             status: inv.status,
-            notes: inv.notes
+            notes: inv.notes,
+            template: inv.template // Added this line
           });
           setClient({
             name: inv.client_name,
