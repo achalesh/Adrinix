@@ -28,20 +28,20 @@ foreach ($companies as $comp) {
     ensureTenantSchema($conn, $cid);
     
     // Move Tax Profiles
-    $conn->query("INSERT IGNORE INTO `{$prefix}tax_profiles` (id, user_id, name, percentage, description, created_at) 
-                 SELECT id, user_id, label, rate_percentage, '', created_at FROM tax_profiles WHERE company_id = $cid");
+    $conn->query("INSERT IGNORE INTO `{$prefix}tax_profiles` (id, user_id, name, percentage, description) 
+                 SELECT id, user_id, label, rate_percentage, '' FROM tax_profiles WHERE company_id = $cid");
     
     // Move Clients
-    $conn->query("INSERT IGNORE INTO `{$prefix}clients` (id, user_id, name, email, phone, billing_address, created_at) 
-                 SELECT id, user_id, name, email, phone, billing_address, created_at FROM clients WHERE company_id = $cid");
+    $conn->query("INSERT IGNORE INTO `{$prefix}clients` (id, user_id, name, email, phone, billing_address) 
+                 SELECT id, user_id, name, email, phone, billing_address FROM clients WHERE company_id = $cid");
     
     // Move Products
-    $conn->query("INSERT IGNORE INTO `{$prefix}products` (id, user_id, name, description, base_price, category, created_at) 
-                 SELECT id, user_id, name, description, unit_price, category, created_at FROM products WHERE company_id = $cid");
+    $conn->query("INSERT IGNORE INTO `{$prefix}products` (id, user_id, name, description, base_price, category) 
+                 SELECT id, user_id, name, description, unit_price, category FROM products WHERE company_id = $cid");
     
     // Move Invoices
-    $conn->query("INSERT IGNORE INTO `{$prefix}invoices` (id, user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes, created_at) 
-                 SELECT id, user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes, created_at 
+    $conn->query("INSERT IGNORE INTO `{$prefix}invoices` (id, user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes) 
+                 SELECT id, user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes 
                  FROM invoices WHERE company_id = $cid");
     
     // Move Invoice Items
@@ -52,8 +52,8 @@ foreach ($companies as $comp) {
                  WHERE i.company_id = $cid");
                  
     // Move Team Members
-    $conn->query("INSERT IGNORE INTO `{$prefix}team_members` (id, user_id, email, password_hash, name, role, created_at) 
-                 SELECT id, user_id, email, password_hash, name, role, created_at FROM team_members WHERE user_id = $uid");
+    $conn->query("INSERT IGNORE INTO `{$prefix}team_members` (id, user_id, email, password_hash, name, role) 
+                 SELECT id, user_id, email, password_hash, name, role FROM team_members WHERE user_id = $uid");
 
     echo "Done for Company $cid.\n";
 }

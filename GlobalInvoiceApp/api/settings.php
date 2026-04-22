@@ -4,6 +4,7 @@ require_once 'db.php';
 
 $authUser = authenticate();
 $user_id = $authUser['user_id'];
+header("X-Adrinix-Debug: v2-prefixing-active");
 
 $headers = getallheaders();
 $active_company_id = isset($headers['X-Company-Id']) ? (int)$headers['X-Company-Id'] : null;
