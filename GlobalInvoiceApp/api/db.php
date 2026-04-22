@@ -83,8 +83,8 @@ function t($table) {
 function ensureTenantSchema($conn, $company_id) {
     $prefix = "c" . $company_id . "_";
     
-    // Check if invoices exists first
-    $res = $conn->query("SHOW TABLES LIKE '{$prefix}invoices'");
+    // Check if invoices exists or tax_profiles exists
+    $res = $conn->query("SHOW TABLES LIKE '{$prefix}tax_profiles'");
     if ($res->num_rows > 0) return;
 
     // Provisioning SQL Template
@@ -217,7 +217,6 @@ function requireCompany($user_id)
     }
 
     $stmt = $conn->prepare("SELECT * FROM companies WHERE id = ? AND user_id = ?");
-    $stmt->bind_param("ii", $company_id, $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $company = $result->fetch_assoc();

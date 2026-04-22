@@ -108,6 +108,10 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         // Update Tax Profiles (Tenant DB)
+        if (empty($taxTable) || $taxTable === 'tax_profiles') {
+            throw new Exception("Security Error: Attempted to write to master tax table. Expected prefix missing.");
+        }
+
         $conn->query("DELETE FROM `{$taxTable}` WHERE user_id = $user_id");
         if (!empty($data['taxProfiles'])) {
             $stmt = $conn->prepare("INSERT INTO `{$taxTable}` (user_id, name, percentage) VALUES (?, ?, ?)");
