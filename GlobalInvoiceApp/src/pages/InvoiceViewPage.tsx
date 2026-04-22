@@ -115,9 +115,37 @@ export const InvoiceViewPage = () => {
 
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
+          @page {
+            size: A4;
+            margin: 0;
+          }
           .no-print { display: none !important; }
           body { background: white !important; margin: 0 !important; padding: 0 !important; }
-          main { background: white !important; padding: 0 !important; }
+          main { background: white !important; padding: 0 !important; margin: 0 !important; }
+          
+          /* Reset Preview Container for Print */
+          div[style*="background: var(--bg-color)"] {
+            background: white !important;
+            padding: 0 !important;
+          }
+
+          /* Target the InvoicePreview paper directly */
+          [class*="previewContainer"] {
+            padding: 0 !important;
+            background: white !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+
+          [class*="paper"] {
+            width: 100% !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 10mm !important; /* Proper margin for A4 printable area */
+            box-shadow: none !important;
+            transform: none !important;
+          }
+
           .app-layout { padding: 0 !important; }
         }
       `}} />
