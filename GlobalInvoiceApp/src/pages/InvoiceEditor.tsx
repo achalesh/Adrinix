@@ -10,7 +10,6 @@ import type { Product } from './Products';
 import { API_BASE } from '../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { InvoicePreview } from '../components/InvoicePreview';
-import { Eye, Edit3 } from 'lucide-react';
 import styles from './InvoiceEditor.module.css';
 
 interface InvoiceItem {
@@ -50,7 +49,7 @@ export const InvoiceEditor = () => {
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), description: '', quantity: 1, unit_price: 0, tax_method: 'exclusive', tax_profile_id: '' }
   ]);
-  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(isEditMode);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -634,26 +633,9 @@ export const InvoiceEditor = () => {
         </div> {/* Items List / itemsSection */}
       </div> {/* formPane */}
 
-      <div className={`${styles.previewPane} ${isPreviewVisible ? styles.mobileVisible : ''}`}>
-        <InvoicePreview 
-          invoiceMeta={invoiceMeta}
-          client={client}
-          items={items}
-          subtotal={subtotal}
-          taxBreakdown={taxBreakdown}
-          grandTotal={grandTotal}
-        />
-      </div>
     </div> {/* editorLayout */}
 
-      {/* Mobile Toggle Button */}
-      <button 
-        className={`${styles.mobileToggle} btn-primary`}
-        onClick={() => setIsPreviewVisible(!isPreviewVisible)}
-      >
-        {isPreviewVisible ? <Edit3 size={18} /> : <Eye size={18} />}
-        {isPreviewVisible ? 'Back to Editor' : 'Live Preview'}
-      </button>
+
       {/* ── Client Picker Modal ────────────────────────────────────────── */}
       {clientPickerOpen && (
         <div style={{
