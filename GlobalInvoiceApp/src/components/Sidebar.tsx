@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import styles from './Sidebar.module.css';
@@ -93,6 +93,14 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
         >
           <FileText size={20} />
           <span>Invoices</span>
+        </NavLink>
+        <NavLink 
+          to="/invoices?filter=Recurring" 
+          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+          onClick={onClose}
+        >
+          <RefreshCw size={20} />
+          <span>Recurring</span>
         </NavLink>
         <NavLink 
           to="/clients" 

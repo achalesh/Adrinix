@@ -187,12 +187,12 @@ export const Dashboard: React.FC = () => {
           accent: '#f59e0b',
         },
         {
-          label: 'Active Clients',
-          value: stats.total_clients.toString(),
-          sub: stats.overdue_count > 0 ? `${stats.overdue_count} overdue invoice${stats.overdue_count > 1 ? 's' : ''}` : 'All invoices on time',
-          subClass: stats.overdue_count > 0 ? styles.statSubRed : styles.statSubGreen,
-          icon: Users,
-          accent: '#ec4899',
+          label: 'Scheduled',
+          value: stats.total_invoices > 0 ? 'Active' : 'None',
+          sub: 'Recurring invoices enabled',
+          subClass: styles.statSubGreen,
+          icon: Clock,
+          accent: '#818cf8',
         },
       ]
     : [];

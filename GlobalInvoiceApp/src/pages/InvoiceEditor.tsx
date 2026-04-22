@@ -561,7 +561,7 @@ export const InvoiceEditor = () => {
       </div>
 
       {/* Recurring Settings */}
-      <div className="glass-panel" style={{ border: invoiceMeta.is_recurring ? '1px solid var(--primary-color)' : '1px solid var(--panel-border)', transition: 'all 0.3s' }}>
+      <div className={`glass-panel ${invoiceMeta.is_recurring ? styles.recurringActive : ''}`} style={{ transition: 'all 0.3s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: invoiceMeta.is_recurring ? 15 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ 

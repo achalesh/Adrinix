@@ -21,7 +21,7 @@ interface Invoice {
   is_recurring: number | boolean;
 }
 
-const STATUS_LIST = ['All', 'Draft', 'Sent', 'Paid', 'Overdue'] as const;
+const STATUS_LIST = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Recurring'] as const;
 
 function Badge({ status }: { status: string }) {
   const cls = {
@@ -47,7 +47,14 @@ export const InvoiceList: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
-  useEffect(() => { fetchInvoices(); }, [activeCompanyId]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const filter = params.get('filter');
+    if (filter && STATUS_LIST.includes(filter as any)) {
+      setStatusFilter(filter);
+    }
+    fetchInvoices();
+  }, [activeCompanyId]);
 
   const fetchInvoices = async () => {
     setIsLoading(true);
@@ -95,7 +102,11 @@ export const InvoiceList: React.FC = () => {
     const q = search.toLowerCase();
     const matchSearch = !q || inv.invoice_number.toLowerCase().includes(q) ||
       (inv.client_name ?? '').toLowerCase().includes(q);
-    const matchStatus = statusFilter === 'All' || inv.status === statusFilter;
+    const matchStatus = statusFilter === 'All' 
+      ? true 
+      : statusFilter === 'Recurring' 
+        ? Boolean(Number(inv.is_recurring)) 
+        : inv.status === statusFilter;
     return matchSearch && matchStatus;
   }), [invoices, search, statusFilter]);
 
