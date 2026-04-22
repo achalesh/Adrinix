@@ -87,7 +87,7 @@ function ensureTenantSchema($conn, $company_id)
     CREATE TABLE IF NOT EXISTS `{$prefix}tax_profiles` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(100) NOT NULL, percentage DECIMAL(5,2) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS `{$prefix}clients` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, email VARCHAR(255), phone VARCHAR(50), billing_address TEXT, shipping_address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS `{$prefix}products` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, description TEXT, base_price DECIMAL(15,2) NOT NULL, category VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE IF NOT EXISTS `{$prefix}invoices` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, client_id INT, invoice_number VARCHAR(50) NOT NULL, status ENUM('Draft', 'Sent', 'Paid', 'Overdue') DEFAULT 'Draft', template VARCHAR(50) DEFAULT 'minimal', issue_date DATE NOT NULL, due_date DATE, subtotal DECIMAL(15,2) NOT NULL, tax_total DECIMAL(15,2) NOT NULL, grand_total DECIMAL(15,2) NOT NULL, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES `{$prefix}clients`(id) ON DELETE SET NULL);
+    CREATE TABLE IF NOT EXISTS `{$prefix}invoices` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, client_id INT, invoice_number VARCHAR(50) NOT NULL, status ENUM('Draft', 'Sent', 'Paid', 'Overdue') DEFAULT 'Draft', template VARCHAR(50) DEFAULT 'minimal', issue_date DATE NOT NULL, due_date DATE, subtotal DECIMAL(15,2) NOT NULL, tax_total DECIMAL(15,2) NOT NULL, grand_total DECIMAL(15,2) NOT NULL, notes TEXT, is_recurring TINYINT(1) DEFAULT 0, recurrence_period ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none', next_generation_date DATE DEFAULT NULL, last_generated_date DATE DEFAULT NULL, recurrence_status ENUM('active', 'paused', 'completed') DEFAULT 'active', auto_send TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES `{$prefix}clients`(id) ON DELETE SET NULL);
     CREATE TABLE IF NOT EXISTS `{$prefix}invoice_items` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT NOT NULL, quantity INT NOT NULL, unit_price DECIMAL(15,2) NOT NULL, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', tax_profile_id INT DEFAULT NULL, FOREIGN KEY (invoice_id) REFERENCES `{$prefix}invoices`(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS `{$prefix}team_members` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, role ENUM('Admin', 'Manager', 'Viewer') DEFAULT 'Viewer', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
     ";
@@ -95,6 +95,19 @@ function ensureTenantSchema($conn, $company_id)
     $conn->multi_query($sql);
     while ($conn->next_result()) {
         ;
+    }
+
+    // ─── MIGRATION: Check for recurring columns in invoices ───
+    $res = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE 'is_recurring'");
+    if ($res->num_rows == 0) {
+        $conn->query("ALTER TABLE `{$prefix}invoices` 
+            ADD COLUMN is_recurring TINYINT(1) DEFAULT 0,
+            ADD COLUMN recurrence_period ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none',
+            ADD COLUMN next_generation_date DATE DEFAULT NULL,
+            ADD COLUMN last_generated_date DATE DEFAULT NULL,
+            ADD COLUMN recurrence_status ENUM('active', 'paused', 'completed') DEFAULT 'active',
+            ADD COLUMN auto_send TINYINT(1) DEFAULT 0
+        ");
     }
 }
 

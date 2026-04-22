@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $clientsTable = t('clients');
     
     $stmt = $conn->prepare("
-        SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total,
+        SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total, i.is_recurring,
                c.name AS client_name
         FROM `{$invoicesTable}` i
         LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
@@ -96,14 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $conn->prepare("
                 UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, template=?, issue_date=?, due_date=?,
-                    subtotal=?, tax_total=?, grand_total=?, notes=?
+                    subtotal=?, tax_total=?, grand_total=?, notes=?,
+                    is_recurring=?, recurrence_period=?, next_generation_date=?, recurrence_status=?, auto_send=?
                 WHERE id=? AND user_id=?
             ");
             $template = $data['template'] ?? 'minimal';
-            $stmt->bind_param("sssssdddsii",
+            $is_rec = !empty($data['is_recurring']) ? 1 : 0;
+            $rec_per = $data['recurrence_period'] ?? 'none';
+            $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
+            $rec_stat = $data['recurrence_status'] ?? 'active';
+            $auto_send = !empty($data['auto_send']) ? 1 : 0;
+
+            $stmt->bind_param("sssssdddssissiii",
                 $data['invoice_number'], $data['status'], $template,
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
+                $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send,
                 $id, $user_id
             );
             $stmt->execute(); $stmt->close();
@@ -146,15 +154,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $si = $conn->prepare("
-            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, is_recurring, recurrence_period, next_generation_date, recurrence_status, auto_send)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $status = 'Draft';
         $template = $data['template'] ?? 'minimal';
-        $si->bind_param("iiisssssddd",
+        $is_rec = !empty($data['is_recurring']) ? 1 : 0;
+        $rec_per = $data['recurrence_period'] ?? 'none';
+        $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
+        $rec_stat = $data['recurrence_status'] ?? 'active';
+        $auto_send = !empty($data['auto_send']) ? 1 : 0;
+
+        $si->bind_param("iiisssssdddssisi",
             $user_id, $client_id, $data['invoice_number'], $status, $template,
             $data['issue_date'], $data['due_date'],
-            $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes']
+            $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
+            $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send
         );
         $si->execute(); $invoice_id = $conn->insert_id; $si->close();
 
@@ -176,5 +191,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->rollback();
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
+}
+
+function processRecurringInvoices($conn, $user_id) {
+    $invoicesTable = t('invoices');
+    $itemsTable = t('invoice_items');
+
+    // Find due recurring invoices
+    $stmt = $conn->prepare("
+        SELECT * FROM `{$invoicesTable}` 
+        WHERE user_id = ? AND is_recurring = 1 AND recurrence_status = 'active' 
+        AND next_generation_date IS NOT NULL AND next_generation_date <= CURRENT_DATE
+    ");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    while ($template = $result->fetch_assoc()) {
+        $conn->begin_transaction();
+        try {
+            // 1. Generate new invoice number
+            $newNumber = $template['invoice_number'] . '-' . date('dmY');
+            
+            // 2. Create new invoice
+            $si = $conn->prepare("
+                INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes)
+                SELECT user_id, client_id, ?, ?, template, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), subtotal, tax_total, grand_total, notes
+                FROM `{$invoicesTable}` WHERE id = ?
+            ");
+            $newStatus = $template['auto_send'] ? 'Sent' : 'Draft';
+            $si->bind_param("ssi", $newNumber, $newStatus, $template['id']);
+            $si->execute();
+            $newInvoiceId = $conn->insert_id;
+            $si->close();
+
+            // 3. Copy items
+            $sit = $conn->prepare("
+                INSERT INTO `{$itemsTable}` (invoice_id, description, quantity, unit_price, tax_method, tax_profile_id)
+                SELECT ?, description, quantity, unit_price, tax_method, tax_profile_id
+                FROM `{$itemsTable}` WHERE invoice_id = ?
+            ");
+            $sit->bind_param("ii", $newInvoiceId, $template['id']);
+            $sit->execute();
+            $sit->close();
+
+            // 4. Update template's next_generation_date
+            $nextDate = new DateTime($template['next_generation_date']);
+            if ($template['recurrence_period'] === 'weekly') $nextDate->modify('+1 week');
+            elseif ($template['recurrence_period'] === 'bi-weekly') $nextDate->modify('+2 weeks');
+            elseif ($template['recurrence_period'] === 'monthly') $nextDate->modify('+1 month');
+            elseif ($template['recurrence_period'] === 'yearly') $nextDate->modify('+1 year');
+            
+            $nextDateStr = $nextDate->format('Y-m-d');
+            $upd = $conn->prepare("UPDATE `{$invoicesTable}` SET next_generation_date = ?, last_generated_date = CURRENT_DATE WHERE id = ?");
+            $upd->bind_param("si", $nextDateStr, $template['id']);
+            $upd->execute();
+            $upd->close();
+
+            $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+        }
+    }
+    $stmt->close();
 }
 ?>

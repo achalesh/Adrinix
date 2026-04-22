@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Plus, Edit2, Trash2, Search,
-  CheckCircle, Clock, AlertCircle, Send, Download
+  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -10,7 +10,6 @@ import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './InvoiceList.module.css';
-
 interface Invoice {
   id: number;
   invoice_number: string;
@@ -19,6 +18,7 @@ interface Invoice {
   issue_date: string;
   due_date: string;
   grand_total: number;
+  is_recurring: number | boolean;
 }
 
 const STATUS_LIST = ['All', 'Draft', 'Sent', 'Paid', 'Overdue'] as const;
@@ -196,7 +196,14 @@ export const InvoiceList: React.FC = () => {
                   </td></tr>
                 : filtered.map(inv => (
                     <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)}>
-                      <td><span className={styles.invNum}>{inv.invoice_number}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className={styles.invNum}>{inv.invoice_number}</span>
+                          {Boolean(Number(inv.is_recurring)) && (
+                            <RefreshCw size={12} style={{ color: 'var(--primary-color)' }} title="Recurring Template" />
+                          )}
+                        </div>
+                      </td>
                       <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
                       <td><span className={styles.dateText}>{fmtDate(inv.issue_date)}</span></td>
                       <td><span className={styles.dateText}>{fmtDate(inv.due_date)}</span></td>
