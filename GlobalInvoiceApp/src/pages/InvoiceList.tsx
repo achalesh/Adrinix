@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './InvoiceList.module.css';
@@ -36,9 +37,9 @@ function fmtDate(d: string) {
 }
 
 export const InvoiceList: React.FC = () => {
-  const navigate = useNavigate();
   const { localization } = useSettingsStore();
   const { activeCompanyId } = useAuthStore();
+  const { showToast } = useToastStore();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,27 +54,40 @@ export const InvoiceList: React.FC = () => {
       const res = await authFetch(`${API_BASE}/invoices.php`);
       const data = await res.json();
       if (data.status === 'success') setInvoices(data.data);
-    } catch { console.error('Failed to load invoices'); }
-    finally { setIsLoading(false); }
+    } catch {
+      showToast('Failed to load invoice records', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Delete this invoice permanently?')) return;
-    await authFetch(`${API_BASE}/invoices.php`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id }),
-    });
-    fetchInvoices();
+    try {
+      await authFetch(`${API_BASE}/invoices.php`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+      fetchInvoices();
+      showToast('Invoice deleted successfully', 'info');
+    } catch {
+      showToast('Deletion failed', 'error');
+    }
   };
 
   const handleStatusChange = async (id: number, status: string, e: React.ChangeEvent<HTMLSelectElement>) => {
     e.stopPropagation();
-    await authFetch(`${API_BASE}/invoices.php`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'update_status', id, status }),
-    });
-    fetchInvoices();
+    try {
+      await authFetch(`${API_BASE}/invoices.php`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_status', id, status }),
+      });
+      fetchInvoices();
+      showToast(`Status updated to ${status}`);
+    } catch {
+      showToast('Failed to update status', 'error');
+    }
   };
 
   const filtered = useMemo(() => invoices.filter(inv => {

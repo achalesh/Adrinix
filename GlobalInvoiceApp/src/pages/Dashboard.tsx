@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useToastStore } from '../store/useToastStore';
 import { API_BASE } from '../config/api';
 import styles from './Dashboard.module.css';
 
@@ -84,6 +85,7 @@ function StatusBadge({ status }: { status: string }) {
 export const Dashboard: React.FC = () => {
   const { user, activeCompanyId } = useAuthStore();
   const { localization, company } = useSettingsStore();
+  const { showToast } = useToastStore();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState<DashStats | null>(null);
@@ -122,6 +124,7 @@ export const Dashboard: React.FC = () => {
 
   // Demo data for when the PHP backend is unavailable
   const loadDemoData = () => {
+    if (!isDemo) showToast('Connecting to Demo Data', 'info');
     setIsDemo(true);
     setStats({
       total_invoices: 24,

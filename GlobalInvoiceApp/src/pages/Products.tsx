@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Package, Plus, Edit2, Trash2, Search, X, Tag, ToggleLeft, ToggleRight } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './Products.module.css';
@@ -32,6 +33,7 @@ const emptyProduct = (): Partial<Product> => ({
 export const Products: React.FC = () => {
   const { taxProfiles, localization } = useSettingsStore();
   const { activeCompanyId } = useAuthStore();
+  const { showToast } = useToastStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,7 +51,7 @@ export const Products: React.FC = () => {
       const res = await authFetch(API);
       const data = await res.json();
       if (data.status === 'success') setProducts(data.data);
-    } catch { console.error('Products fetch failed'); }
+    } catch { showToast('Connection error: Failed to fetch products', 'error'); }
     finally { setIsLoading(false); }
   };
 
@@ -65,27 +67,38 @@ export const Products: React.FC = () => {
       setIsModalOpen(false);
       setEditing(emptyProduct());
       fetchProducts();
-    } catch { console.error('Save failed'); }
+      showToast('Product catalog updated!', 'success');
+    } catch { showToast('Failed to save product details.', 'error'); }
     finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this product? It won\'t affect existing invoices.')) return;
-    await authFetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id }),
-    });
-    fetchProducts();
+    try {
+      await authFetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+      fetchProducts();
+      showToast('Product deleted', 'info');
+    } catch {
+      showToast('Deletion failed', 'error');
+    }
   };
 
   const handleToggle = async (id: number) => {
-    await authFetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'toggle', id }),
-    });
-    fetchProducts();
+    try {
+      await authFetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle', id }),
+      });
+      fetchProducts();
+      showToast('Status updated');
+    } catch {
+      showToast('Failed to update status', 'error');
+    }
   };
 
   const openEdit = (p: Product) => { setEditing({ ...p }); setIsModalOpen(true); };

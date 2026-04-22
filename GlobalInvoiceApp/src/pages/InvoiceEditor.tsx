@@ -3,6 +3,7 @@ import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLef
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { InvoicePDF } from '../components/InvoicePDF';
 import type { Product } from './Products';
@@ -30,6 +31,7 @@ export const InvoiceEditor = () => {
   const isEditMode = Boolean(invoiceId);
   const { localization, taxProfiles, fetchSettings } = useSettingsStore();
   const { activeCompanyId } = useAuthStore();
+  const { showToast } = useToastStore();
 
   useEffect(() => { fetchSettings(); }, [fetchSettings, activeCompanyId]);
 
@@ -258,12 +260,12 @@ export const InvoiceEditor = () => {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        alert(isEditMode ? 'Invoice updated!' : 'Invoice created!');
+        showToast(isEditMode ? 'Invoice updated successfully!' : 'Invoice created successfully!', 'success');
         if (!isEditMode) navigate(`/invoices/${data.invoice_id}`);
       } else {
-        alert('Error: ' + data.message);
+        showToast('Error: ' + data.message, 'error');
       }
-    } catch (e) { console.error(e); alert('Network Error'); }
+    } catch (e) { console.error(e); showToast('Network Error - could not reach the server', 'error'); }
     setIsSaving(false);
   };
 
@@ -303,14 +305,14 @@ export const InvoiceEditor = () => {
       URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error('PDF export failed:', err);
-      alert('PDF export failed: ' + (err.message || 'Unknown error') + '. Please check the console for details.');
+      showToast('PDF export failed. Please check the console for details.', 'error');
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleSendEmailFinal = async () => {
-    if (!emailData.to) return alert('Please enter a recipient email.');
+    if (!emailData.to) return showToast('Please enter a recipient email.', 'warning');
     setIsSendingEmail(true);
     try {
       // 1. Generate PDF Blob
@@ -359,18 +361,14 @@ export const InvoiceEditor = () => {
 
       const data = await res.json();
       if (data.status === 'success') {
-        alert('Email sent successfully!');
+        showToast('Invoice sent successfully!', 'success');
         setEmailModalOpen(false);
       } else {
-        alert('Error: ' + data.message);
+        showToast('Error: ' + data.message, 'error');
       }
     } catch (err: any) {
       console.error('Email send failed:', err);
-      // Try to get a more specific error message from the response if possible
-      let details = 'Check your connection and server mail settings.';
-      if (err instanceof Error) details = err.message;
-      
-      alert(`Failed to send email: ${details}`);
+      showToast('Failed to send email. Check your connection or mail settings.', 'error');
     } finally {
       setIsSendingEmail(false);
     }

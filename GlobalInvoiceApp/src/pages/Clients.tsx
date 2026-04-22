@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit2, Trash2, Mail, Phone, BookOpen, X, Search } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 import { API_BASE } from '../config/api';
 import styles from './Clients.module.css';
 
@@ -15,6 +16,7 @@ interface Client {
 
 export const Clients = () => {
   const { activeCompanyId } = useAuthStore();
+  const { showToast } = useToastStore();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,7 +38,7 @@ export const Clients = () => {
         setClients(data.data);
       }
     } catch (e) {
-      console.error('Failed to fetch clients');
+      showToast('Failed to fetch clients from server', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -66,8 +68,9 @@ export const Clients = () => {
       setIsModalOpen(false);
       setEditingClient({});
       fetchClients();
+      showToast('Client record saved successfully!', 'success');
     } catch (e) {
-      console.error('Failed to save client');
+      showToast('Failed to save client data', 'error');
     }
   };
 

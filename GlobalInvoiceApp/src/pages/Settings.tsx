@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Building2, Globe, Receipt, Plus, Trash2, Save, Users as UsersIcon, Shield, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSettingsStore, TaxProfile } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 import { COMMON_CURRENCIES } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './Settings.module.css';
@@ -53,13 +54,7 @@ export const Settings = () => {
     }
   };
 
-  // Toast State
-  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { showToast } = useToastStore();
 
   useEffect(() => {
     fetchSettings();
@@ -469,15 +464,7 @@ export const Settings = () => {
         </div>
       )}
 
-    {/* Toast Notifications */}
-    {toast && (
-      <div className={styles.toastContainer}>
-        <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : ''}`}>
-          {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-          {toast.message}
-        </div>
-      </div>
-    )}
+    {/* Global Toast Provider is now in App.tsx */}
 
     {isNewCompanyModalOpen && (
       <div className={styles.modalOverlay}>

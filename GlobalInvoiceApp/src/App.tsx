@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Clients } from './pages/Clients';
 import { Products } from './pages/Products';
+import { ToastProvider } from './components/ToastProvider';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -71,6 +72,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <ToastProvider />
       
       {/* Overlay for mobile */}
       {isSidebarOpen && (
