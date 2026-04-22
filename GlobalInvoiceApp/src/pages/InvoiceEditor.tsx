@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -42,8 +42,10 @@ export const InvoiceEditor = () => {
     due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     notes: 'Thank you for your business!',
     status: 'Draft',
-    template: 'minimal',
+    template: useSettingsStore.getState().company.defaultTemplate || 'minimal',
   });
+
+  const [showAdvancedDesign, setShowAdvancedDesign] = useState(false);
 
   const [client, setClient] = useState({ name: '', email: '', address: '', id: null as number | null });
   const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -463,31 +465,49 @@ export const InvoiceEditor = () => {
       <div className={styles.editorLayout}>
         <div className={styles.formPane}>
 
-      {/* Layout Template Picker */}
-      <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Design Template</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {([
-            { id: 'minimal', label: 'Minimal', desc: 'Clean & Simple' },
-            { id: 'corporate', label: 'Corporate', desc: 'Professional' },
-            { id: 'branded', label: 'Branded', desc: 'Hero Visuals' }
-          ] as const).map(t => (
-            <button
-              key={t.id}
-              onClick={() => setInvoiceMeta({ ...invoiceMeta, template: t.id })}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px',
-                borderRadius: 12, border: '1px solid', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
-                background: invoiceMeta.template === t.id ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
-                borderColor: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--panel-border)',
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700, color: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--text-primary)' }}>{t.label}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{t.desc}</span>
-            </button>
-          ))}
-        </div>
+      {/* Advanced Design Toggle */}
+      <div style={{ marginBottom: 15 }}>
+        <button 
+          onClick={() => setShowAdvancedDesign(!showAdvancedDesign)}
+          className="btn-secondary"
+          style={{ width: '100%', justifyContent: 'space-between', padding: '12px 20px', borderRadius: 12, fontSize: 13, color: 'var(--text-secondary)' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <SettingsIcon size={16} /> {showAdvancedDesign ? 'Hide Advanced Design' : 'Custom Design Override'}
+          </div>
+          {showAdvancedDesign ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
       </div>
+
+      {showAdvancedDesign && (
+        <div className="glass-panel animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 15 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Invoice Template Override</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {([
+              { id: 'minimal', label: 'Minimal', desc: 'Clean & Simple' },
+              { id: 'corporate', label: 'Corporate', desc: 'Professional' },
+              { id: 'branded', label: 'Branded', desc: 'Hero Visuals' }
+            ] as const).map(t => (
+              <button
+                key={t.id}
+                onClick={() => setInvoiceMeta({ ...invoiceMeta, template: t.id })}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px',
+                  borderRadius: 12, border: '1px solid', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
+                  background: invoiceMeta.template === t.id ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
+                  borderColor: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--panel-border)',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--text-primary)' }}>{t.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{t.desc}</span>
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            Note: This overrides the default "{useSettingsStore.getState().company.defaultTemplate}" template for this specific invoice only.
+          </p>
+        </div>
+      )}
 
       {/* Status selector — edit mode only */}
       {isEditMode && (

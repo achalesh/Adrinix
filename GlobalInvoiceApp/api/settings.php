@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 1. If explicit list requested OR no specific company requested, return list of companies
     if ($action === 'list' || !$active_company_id) {
-        $stmt = $conn->prepare("SELECT id, name, logo, country, currency_code, locale FROM companies WHERE user_id = ? ORDER BY created_at ASC");
+        $stmt = $conn->prepare("SELECT id, name, logo, country, currency_code, locale, default_template FROM companies WHERE user_id = ? ORDER BY created_at ASC");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $res = $stmt->get_result();
@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'email' => $company['email'],
                 'logo' => $company['logo'],
                 'country' => $company['country'],
-                'registrationNumber' => $company['registration_number']
+                'registrationNumber' => $company['registration_number'],
+                'defaultTemplate' => $company['default_template'] ?? 'minimal'
             ],
             'localization' => [
                 'currencyCode' => $company['currency_code'] ?? 'USD',
@@ -97,10 +98,11 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $c_reg = $data['company']['registrationNumber'] ?? '';
         $c_curr = $data['localization']['currencyCode'] ?? 'USD';
         $c_loc = $data['localization']['locale'] ?? 'en-US';
+        $c_tmpl = $data['company']['defaultTemplate'] ?? 'minimal';
 
         // Update Master DB
-        $stmt = $conn->prepare("UPDATE companies SET name=?, address=?, phone=?, email=?, logo=?, country=?, registration_number=?, currency_code=?, locale=? WHERE id=? AND user_id=?");
-        $stmt->bind_param("sssssssssii", $c_name, $c_addr, $c_phone, $c_email, $c_logo, $c_country, $c_reg, $c_curr, $c_loc, $cid, $user_id);
+        $stmt = $conn->prepare("UPDATE companies SET name=?, address=?, phone=?, email=?, logo=?, country=?, registration_number=?, currency_code=?, locale=?, default_template=? WHERE id=? AND user_id=?");
+        $stmt->bind_param("ssssssssssii", $c_name, $c_addr, $c_phone, $c_email, $c_logo, $c_country, $c_reg, $c_curr, $c_loc, $c_tmpl, $cid, $user_id);
         $stmt->execute();
         $stmt->close();
 

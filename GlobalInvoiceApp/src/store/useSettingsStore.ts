@@ -26,6 +26,7 @@ export interface SettingsState {
     logo: string;
     country: string;
     registrationNumber: string;
+    defaultTemplate: string;
   };
   localization: {
     currencyCode: string;
@@ -51,7 +52,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     email: '',
     logo: '', 
     country: 'United States', 
-    registrationNumber: '' 
+    registrationNumber: '',
+    defaultTemplate: 'minimal'
   },
   localization: { currencyCode: 'USD', locale: 'en-US' },
   taxProfiles: [],
