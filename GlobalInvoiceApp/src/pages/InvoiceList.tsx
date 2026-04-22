@@ -200,7 +200,9 @@ export const InvoiceList: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className={styles.invNum}>{inv.invoice_number}</span>
                           {Boolean(Number(inv.is_recurring)) && (
-                            <RefreshCw size={12} style={{ color: 'var(--primary-color)' }} title="Recurring Template" />
+                            <span title="Recurring Template" style={{ display: 'flex', alignItems: 'center' }}>
+                              <RefreshCw size={12} style={{ color: 'var(--primary-color)' }} />
+                            </span>
                           )}
                         </div>
                       </td>
