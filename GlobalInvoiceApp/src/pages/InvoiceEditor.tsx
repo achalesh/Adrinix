@@ -111,9 +111,9 @@ export const InvoiceEditor = () => {
         } else {
           setLoadError(data.message ?? 'Failed to load invoice data.');
         }
-      } catch (e) {
-        console.error('Failed to load invoice', e);
-        setLoadError('Network error — could not reach the server.');
+      } catch (e: any) {
+        console.error('Network Error during invoice load:', e);
+        setLoadError(`Network error — could not reach the server. (${e.message || 'Check connection'})`);
       }
       finally { setIsLoadingInvoice(false); }
     };
