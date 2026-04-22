@@ -25,11 +25,19 @@ const styles = StyleSheet.create({
   // Corporate Styles
   corporateHeader: { backgroundColor: '#1e293b', padding: 30, margin: -40, marginBottom: 40, color: 'white' },
   corporateTitle: { fontSize: 30, fontWeight: 700, letterSpacing: 2, color: 'white' },
-  corporateLogo: { filter: 'brightness(0) invert(1)' },
+  corporateLogo: { opacity: 0.8 },
   
   // Branded Styles
   brandedAccent: { height: 6, backgroundColor: '#6366f1', position: 'absolute', top: 0, left: 0, right: 0 },
-  brandedBadge: { backgroundColor: '#f5f3ff', padding: 12, borderRadius: 8, alignItems: 'flex-end', border: '1pt solid #ddd6fe' },
+  brandedBadge: { 
+    backgroundColor: '#f5f3ff', 
+    padding: 12, 
+    borderRadius: 8, 
+    alignItems: 'flex-end', 
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: '#ddd6fe' 
+  },
   brandedBadgeLabel: { fontSize: 8, color: '#7c3aed', fontWeight: 700, textTransform: 'uppercase' },
   brandedBadgeVal: { fontSize: 18, fontWeight: 700, color: '#111827' },
 
@@ -94,7 +102,7 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
     <View style={styles.corporateHeader}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View>
-          {settings.company.logo && <Image src={settings.company.logo} style={[styles.logo, { filter: 'brightness(0) invert(1)' }]} />}
+          {settings.company.logo && <Image src={settings.company.logo} style={styles.logo} />}
           <Text style={[styles.companyName, { color: 'white' }]}>{settings.company.name}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -109,8 +117,8 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
     <View>
       <View style={styles.brandedAccent} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, marginTop: 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {settings.company.logo && <Image src={settings.company.logo} style={styles.logo} />}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {settings.company.logo && <Image src={settings.company.logo} style={[styles.logo, { marginRight: 10 }]} />}
           <View>
             <Text style={styles.companyName}>{settings.company.name}</Text>
             <Text style={{ fontSize: 8, color: '#6366f1', fontWeight: 700 }}>STATEMENT</Text>
