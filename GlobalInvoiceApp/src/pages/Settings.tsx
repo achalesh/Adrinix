@@ -261,8 +261,6 @@ export const Settings = () => {
               <Palette size={16} /> Appearance
             </button>
           </div>
-        </>
-      )}
 
       {activeTab === 'companies' && (
         <div className={styles.fadeTab}>
