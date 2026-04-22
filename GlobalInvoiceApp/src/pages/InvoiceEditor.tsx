@@ -42,6 +42,7 @@ export const InvoiceEditor = () => {
     due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     notes: 'Thank you for your business!',
     status: 'Draft',
+    template: 'minimal',
   });
 
   const [client, setClient] = useState({ name: '', email: '', address: '', id: null as number | null });
@@ -96,6 +97,7 @@ export const InvoiceEditor = () => {
             due_date: inv.due_date?.split('T')[0] ?? inv.due_date,
             notes: inv.notes ?? '',
             status: inv.status ?? 'Draft',
+            template: inv.template ?? 'minimal',
           });
           setClient({
             name: inv.client_name ?? '',
@@ -460,6 +462,32 @@ export const InvoiceEditor = () => {
 
       <div className={styles.editorLayout}>
         <div className={styles.formPane}>
+
+      {/* Layout Template Picker */}
+      <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>Design Template</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {([
+            { id: 'minimal', label: 'Minimal', desc: 'Clean & Simple' },
+            { id: 'corporate', label: 'Corporate', desc: 'Professional' },
+            { id: 'branded', label: 'Branded', desc: 'Hero Visuals' }
+          ] as const).map(t => (
+            <button
+              key={t.id}
+              onClick={() => setInvoiceMeta({ ...invoiceMeta, template: t.id })}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px',
+                borderRadius: 12, border: '1px solid', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
+                background: invoiceMeta.template === t.id ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.02)',
+                borderColor: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--panel-border)',
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700, color: invoiceMeta.template === t.id ? 'var(--primary-color)' : 'var(--text-primary)' }}>{t.label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{t.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Status selector — edit mode only */}
       {isEditMode && (

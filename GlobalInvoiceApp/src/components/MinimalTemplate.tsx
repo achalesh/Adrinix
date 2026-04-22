@@ -1,0 +1,110 @@
+import React from 'react';
+import { formatCurrency } from '../utils/currency';
+import styles from './templates/MinimalTemplate.module.css';
+
+interface TemplateProps {
+  company: any;
+  localization: any;
+  invoiceMeta: any;
+  client: any;
+  items: any[];
+  subtotal: number;
+  taxBreakdown: Record<string, number>;
+  grandTotal: number;
+}
+
+export const MinimalTemplate: React.FC<TemplateProps> = ({
+  company,
+  localization,
+  invoiceMeta,
+  client,
+  items,
+  subtotal,
+  taxBreakdown,
+  grandTotal
+}) => {
+  const loc = localization?.locale || 'en-US';
+  const cur = localization?.currencyCode || 'USD';
+
+  return (
+    <div className={styles.minimalContainer}>
+      <div className={styles.header}>
+        <div className={styles.companyInfo}>
+          {company.logo && <img src={company.logo} alt="Logo" className={styles.logo} />}
+          <div className={styles.companyDetails}>
+            <h2 className={styles.companyName}>{company.name || 'Your Company'}</h2>
+            <p className={styles.companyAddress}>{company.address}</p>
+          </div>
+        </div>
+        <div className={styles.invoiceMeta}>
+          <h1 className={styles.invoiceTitle}>Invoice</h1>
+          <div className={styles.metaRow}>
+            <span>No.</span>
+            <span>{invoiceMeta.invoice_number}</span>
+          </div>
+          <div className={styles.metaRow}>
+            <span>Date</span>
+            <span>{invoiceMeta.issue_date}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.billingSection}>
+        <div className={styles.billTo}>
+          <p className={styles.label}>Bill To</p>
+          <h3 className={styles.clientName}>{client.name}</h3>
+          <p className={styles.clientAddress}>{client.address}</p>
+          <p className={styles.clientEmail}>{client.email}</p>
+        </div>
+      </div>
+
+      <table className={styles.itemsTable}>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th className={styles.qty}>Qty</th>
+            <th className={styles.price}>Price</th>
+            <th className={styles.total}>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i}>
+              <td>{item.description}</td>
+              <td className={styles.qty}>{item.quantity}</td>
+              <td className={styles.price}>{formatCurrency(item.unit_price, loc, cur)}</td>
+              <td className={styles.total}>{formatCurrency(item.quantity * item.unit_price, loc, cur)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className={styles.summarySection}>
+        <div className={styles.notes}>
+          {invoiceMeta.notes && (
+            <>
+              <p className={styles.label}>Notes</p>
+              <p className={styles.notesText}>{invoiceMeta.notes}</p>
+            </>
+          )}
+        </div>
+        <div className={styles.totals}>
+          <div className={styles.totalRow}>
+            <span>Subtotal</span>
+            <span>{formatCurrency(subtotal, loc, cur)}</span>
+          </div>
+          {Object.entries(taxBreakdown).map(([label, amount]) => (
+            <div key={label} className={styles.totalRow}>
+              <span>{label}</span>
+              <span>{formatCurrency(amount, loc, cur)}</span>
+            </div>
+          ))}
+          <div className={styles.grandTotal}>
+            <span>Total</span>
+            <span>{formatCurrency(grandTotal, loc, cur)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

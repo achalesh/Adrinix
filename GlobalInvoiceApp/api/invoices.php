@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $clientsTable = t('clients');
     
     $stmt = $conn->prepare("
-        SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.grand_total,
+        SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total,
                c.name AS client_name
         FROM `{$invoicesTable}` i
         LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
@@ -95,12 +95,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->begin_transaction();
         try {
             $stmt = $conn->prepare("
-                UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, issue_date=?, due_date=?,
+                UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, template=?, issue_date=?, due_date=?,
                     subtotal=?, tax_total=?, grand_total=?, notes=?
                 WHERE id=? AND user_id=?
             ");
-            $stmt->bind_param("ssssdddsii",
-                $data['invoice_number'], $data['status'],
+            $template = $data['template'] ?? 'minimal';
+            $stmt->bind_param("sssssdddsii",
+                $data['invoice_number'], $data['status'], $template,
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
                 $id, $user_id
@@ -145,12 +146,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $si = $conn->prepare("
-            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, issue_date, due_date, subtotal, tax_total, grand_total, notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
         ");
         $status = 'Draft';
-        $si->bind_param("iiissssddd",
-            $user_id, $client_id, $data['invoice_number'], $status,
+        $template = $data['template'] ?? 'minimal';
+        $si->bind_param("iiisssssddd",
+            $user_id, $client_id, $data['invoice_number'], $status, $template,
             $data['issue_date'], $data['due_date'],
             $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes']
         );

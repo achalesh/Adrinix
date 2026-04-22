@@ -125,6 +125,7 @@ function ensureTenantSchema($conn, $company_id) {
       `client_id` INT,
       `invoice_number` VARCHAR(50) NOT NULL,
       `status` ENUM('Draft', 'Sent', 'Paid', 'Overdue') DEFAULT 'Draft',
+      `template` VARCHAR(50) DEFAULT 'minimal',
       `issue_date` DATE NOT NULL,
       `due_date` DATE,
       `subtotal` DECIMAL(15,2) NOT NULL,

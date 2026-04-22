@@ -1,0 +1,143 @@
+.minimalContainer {
+  padding: 40px;
+  color: #1f2937;
+  font-family: inherit;
+  background: white;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+
+.companyInfo {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.companyName {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.companyAddress {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  max-width: 250px;
+}
+
+.invoiceTitle {
+  margin: 0 0 16px;
+  font-size: 2rem;
+  font-weight: 300;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  gap: 20px;
+}
+
+.metaRow span:first-child {
+  color: #6b7280;
+}
+
+.billingSection {
+  margin-bottom: 40px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 24px;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.clientName {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.clientAddress, .clientEmail {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 40px;
+}
+
+.itemsTable th {
+  text-align: left;
+  padding: 12px 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #9ca3af;
+  border-bottom: 2px solid #111827;
+}
+
+.itemsTable td {
+  padding: 16px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.qty { text-align: center; width: 60px; }
+.price { text-align: right; width: 100px; }
+.total { text-align: right; width: 120px; font-weight: 600; }
+
+.summarySection {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 40px;
+}
+
+.notesText {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 0.9375rem;
+}
+
+.grandTotal {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #111827;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
+}
