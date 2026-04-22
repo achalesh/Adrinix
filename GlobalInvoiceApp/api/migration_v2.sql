@@ -59,5 +59,10 @@ ALTER TABLE `clients`      ADD FOREIGN KEY (`company_id`) REFERENCES `companies`
 ALTER TABLE `invoices`     ADD FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE;
 ALTER TABLE `products`     ADD FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE CASCADE;
 
--- 6. Cleanup Users Table (Optional - uncomment if you want to remove old columns)
+-- 6. Update invoice_items table for tax support
+ALTER TABLE `invoice_items` ADD COLUMN `tax_method` ENUM('exclusive', 'inclusive') DEFAULT 'exclusive' AFTER `unit_price`;
+ALTER TABLE `invoice_items` ADD COLUMN `tax_profile_id` INT DEFAULT NULL AFTER `tax_method`;
+ALTER TABLE `invoice_items` ADD FOREIGN KEY (`tax_profile_id`) REFERENCES `tax_profiles`(`id`) ON DELETE SET NULL;
+
+-- 7. Cleanup Users Table (Optional - uncomment if you want to remove old columns)
 -- ALTER TABLE `users` DROP COLUMN `company_name`, DROP COLUMN `company_address`, DROP COLUMN `contact_number`, DROP COLUMN `contact_email`, DROP COLUMN `company_logo`, DROP COLUMN `country`, DROP COLUMN `registration_number`, DROP COLUMN `currency_code`, DROP COLUMN `locale`;

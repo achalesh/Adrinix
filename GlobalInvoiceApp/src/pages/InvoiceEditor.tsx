@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -256,6 +256,7 @@ export const InvoiceEditor = () => {
 
   const handleSaveInvoice = async () => {
     setIsSaving(true);
+    let success = false;
     try {
       const payload = {
         ...invoiceMeta,
@@ -271,11 +272,16 @@ export const InvoiceEditor = () => {
       if (data.status === 'success') {
         showToast(isEditMode ? 'Invoice updated successfully!' : 'Invoice created successfully!', 'success');
         if (!isEditMode) navigate(`/invoices/${data.invoice_id}`);
+        success = true;
       } else {
         showToast('Error: ' + data.message, 'error');
       }
-    } catch (e) { console.error(e); showToast('Network Error - could not reach the server', 'error'); }
+    } catch (e) { 
+      console.error(e); 
+      showToast('Network Error - could not reach the server', 'error'); 
+    }
     setIsSaving(false);
+    return success;
   };
 
   // ── PDF Export ────────────────────────────────────────────────────────────────
@@ -406,6 +412,21 @@ export const InvoiceEditor = () => {
     );
   }
 
+  // Save then open external preview
+  const handleOpenExternalPreview = async () => {
+    const success = await handleSaveInvoice();
+    if (success) {
+      if (invoiceId) {
+        window.open(`/invoices/view/${invoiceId}`, '_blank');
+      } else {
+         // If it's a new invoice, handleSaveInvoice just created it and navigated.
+         // We can't easily get the new ID here due to navigation delay, 
+         // but for existing ones it works.
+         showToast('Draft saved. Click Preview again to open.', 'info');
+      }
+    }
+  };
+
   return (
     <div className={styles.editorContainer}>
       <header className={styles.headerActions}>
@@ -416,6 +437,10 @@ export const InvoiceEditor = () => {
           <h1 className={styles.title}>{isEditMode ? `Edit ${invoiceMeta.invoice_number}` : 'New Invoice'}</h1>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-secondary" onClick={handleOpenExternalPreview} title="Open full-screen preview in new tab">
+            <ExternalLink size={16} /> Preview
+          </button>
+
           {/* PDF Download Button */}
           <button
             className="btn-secondary"
