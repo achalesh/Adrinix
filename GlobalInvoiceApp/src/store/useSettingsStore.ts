@@ -66,7 +66,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (!res.ok) throw new Error('API Error');
       const data = await res.json();
       if (data.status === 'success' && data.data && data.data.companies) {
-        set({ companies: data.data.companies });
+        const companies = data.data.companies;
+        set({ companies });
+        
+        // Auto-select first company if none active
+        const { activeCompanyId, setActiveCompanyId } = useAuthStore.getState();
+        if (!activeCompanyId && companies.length > 0) {
+          setActiveCompanyId(companies[0].id.toString());
+          // Fetch settings for the newly selected company
+          get().fetchSettings();
+        }
       } else if (data.needs_migration) {
         console.warn('Migration required');
       }

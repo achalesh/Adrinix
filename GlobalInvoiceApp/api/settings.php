@@ -14,12 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // 1. If explicit list requested OR no specific company requested, return list of companies
     if ($action === 'list' || !$active_company_id) {
-        $stmt = $conn->prepare("SELECT id, name, logo, country, currency_code, locale, default_template FROM companies WHERE user_id = ? ORDER BY created_at ASC");
+        $stmt = $conn->prepare("SELECT id, name, logo, country, currency_code, locale, default_template FROM companies WHERE user_id = ?");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $res = $stmt->get_result();
         $companies = [];
-        while($row = $res->fetch_assoc()) { $companies[] = $row; }
+        while($row = $res->fetch_assoc()) { 
+            $companies[] = $row; 
+        }
         $stmt->close();
         
         echo json_encode(['status' => 'success', 'data' => ['companies' => $companies]]);
