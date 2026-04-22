@@ -284,10 +284,14 @@ export const InvoiceEditor = () => {
       const data = await res.json();
       if (data.status === 'success') {
         showToast(isEditMode ? 'Invoice updated successfully!' : 'Invoice created successfully!', 'success');
+        if (data.public_token) {
+          setInvoiceMeta(prev => ({ ...prev, public_token: data.public_token }));
+        }
         if (!isEditMode) navigate(`/invoices/${data.invoice_id}`);
-        success = true;
+        return { success: true, token: data.public_token };
       } else {
         showToast('Error: ' + data.message, 'error');
+        return { success: false };
       }
     } catch (e) { 
       console.error(e); 
@@ -441,20 +445,25 @@ export const InvoiceEditor = () => {
   };
 
   const handleShareLink = async () => {
-    if (!isEditMode) {
-      const success = await handleSaveInvoice();
-      if (!success) return;
-      // After save, we'll be navigated, so the link will be available there
-      showToast('Draft saved. You can now copy the share link.', 'info');
-      return;
+    let token = invoiceMeta.public_token;
+
+    // If token is missing, try to save first to generate it
+    if (!token) {
+      const result = await handleSaveInvoice() as any;
+      if (result && result.success) {
+        token = result.token;
+      }
     }
     
-    if (!invoiceMeta.public_token) {
+    if (!token) {
+      // If still no token and it was a new invoice, they are being navigated anyway
+      if (!isEditMode) return; 
+      
       showToast('No share link available. Please save the invoice first.', 'warning');
       return;
     }
 
-    const url = `${window.location.origin}/portal/${activeCompanyId}/${invoiceMeta.public_token}`;
+    const url = `${window.location.origin}/portal/${activeCompanyId}/${token}`;
     navigator.clipboard.writeText(url);
     showToast('Client portal link copied to clipboard!', 'success');
   };

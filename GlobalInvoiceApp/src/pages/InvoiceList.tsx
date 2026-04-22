@@ -101,7 +101,7 @@ export const InvoiceList: React.FC = () => {
   const handleShare = (inv: Invoice, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!inv.public_token) {
-      showToast('No share link available for this invoice.', 'error');
+      showToast('Please open and save the invoice once to generate a share link.', 'info');
       return;
     }
     const url = `${window.location.origin}/portal/${activeCompanyId}/${inv.public_token}`;

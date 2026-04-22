@@ -52,6 +52,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
         if (!$invoice) { echo json_encode(['status' => 'error', 'message' => 'Not found']); exit; }
 
+        // Auto-generate token if missing (for legacy invoices)
+        if (empty($invoice['public_token'])) {
+            $token = bin2hex(random_bytes(32));
+            $stmtU = $conn->prepare("UPDATE `{$invoicesTable}` SET public_token = ? WHERE id = ?");
+            $stmtU->bind_param("si", $token, $id);
+            $stmtU->execute(); $stmtU->close();
+            $invoice['public_token'] = $token;
+        }
+
         $stmt2 = $conn->prepare("SELECT id, description, quantity, unit_price, tax_method, tax_profile_id FROM `{$itemsTable}` WHERE invoice_id = ?");
         $stmt2->bind_param("i", $id);
         $stmt2->execute();
@@ -135,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $si->close();
             }
             $conn->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Invoice updated']);
+            echo json_encode(['status' => 'success', 'message' => 'Invoice updated', 'public_token' => $token]);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -189,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sit->close();
         }
         $conn->commit();
-        echo json_encode(['status' => 'success', 'message' => 'Invoice saved', 'invoice_id' => $invoice_id]);
+        echo json_encode(['status' => 'success', 'message' => 'Invoice saved', 'invoice_id' => $invoice_id, 'public_token' => $token]);
     } catch (Exception $e) {
         $conn->rollback();
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -218,12 +227,13 @@ function processRecurringInvoices($conn, $user_id) {
             
             // 2. Create new invoice
             $si = $conn->prepare("
-                INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes)
-                SELECT user_id, client_id, ?, ?, template, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), subtotal, tax_total, grand_total, notes
+                INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, public_token)
+                SELECT user_id, client_id, ?, ?, template, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), subtotal, tax_total, grand_total, notes, ?
                 FROM `{$invoicesTable}` WHERE id = ?
             ");
             $newStatus = $template['auto_send'] ? 'Sent' : 'Draft';
-            $si->bind_param("ssi", $newNumber, $newStatus, $template['id']);
+            $newToken = bin2hex(random_bytes(32));
+            $si->bind_param("sssi", $newNumber, $newStatus, $newToken, $template['id']);
             $si->execute();
             $newInvoiceId = $conn->insert_id;
             $si->close();
