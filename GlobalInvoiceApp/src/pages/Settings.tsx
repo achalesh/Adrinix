@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Building2, Globe, Receipt, Plus, Trash2, Save, Users as UsersIcon, Shield, X, CheckCircle, AlertCircle, Palette, Layout, Eye } from 'lucide-react';
 import { MinimalTemplate } from '../components/MinimalTemplate';
 import { CorporateTemplate } from '../components/CorporateTemplate';
