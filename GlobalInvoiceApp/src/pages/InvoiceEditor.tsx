@@ -297,6 +297,35 @@ export const InvoiceEditor = () => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
+  const updateInvoiceStatus = async (newStatus: string) => {
+    // Only upgrade from Draft to Sent automatically
+    if (invoiceMeta.status !== 'Draft' && invoiceMeta.status !== '') return;
+    
+    // Check for ID - either from params or from the URL (if just navigated)
+    let currentId = invoiceId;
+    if (!currentId || currentId === 'new') {
+        // Fallback to URL in case navigation is in progress
+        const parts = window.location.pathname.split('/');
+        currentId = parts[parts.length - 1];
+    }
+    
+    if (!currentId || currentId === 'new') return;
+
+    try {
+      const res = await authFetch(API_INVOICES, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_status', id: Number(currentId), status: newStatus })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setInvoiceMeta(prev => ({ ...prev, status: newStatus }));
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
   const handleSaveInvoice = async () => {
     setIsSaving(true);
     let success = false;
@@ -427,6 +456,8 @@ export const InvoiceEditor = () => {
       if (data.status === 'success') {
         showToast('Invoice sent successfully!', 'success');
         setEmailModalOpen(false);
+        // Auto-update status to Sent
+        updateInvoiceStatus('Sent');
       } else {
         showToast('Error: ' + data.message, 'error');
       }
@@ -504,6 +535,8 @@ export const InvoiceEditor = () => {
     const url = `${window.location.origin}/portal/${activeCompanyId}/${token}`;
     navigator.clipboard.writeText(url);
     showToast('Client portal link copied to clipboard!', 'success');
+    // Auto-update status to Sent
+    updateInvoiceStatus('Sent');
   };
 
   const handleWhatsappShare = async () => {
@@ -517,6 +550,8 @@ export const InvoiceEditor = () => {
     const url = `${window.location.origin}/portal/${activeCompanyId}/${token}`;
     const text = `Hello! Here is your invoice ${invoiceMeta.invoice_number} from ${useSettingsStore.getState().company.name}. You can view and download it here: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    // Auto-update status to Sent
+    updateInvoiceStatus('Sent');
   };
 
   return (
