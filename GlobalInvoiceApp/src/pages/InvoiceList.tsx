@@ -322,9 +322,13 @@ export const InvoiceList: React.FC = () => {
                 ))
               : filtered.length === 0
                 ? <tr><td colSpan={8} className={styles.emptyState}>
-                    {search || statusFilter !== 'All' || typeFilter !== 'All Documents'
+                    {search || statusFilter !== 'All'
                       ? `No ${typeFilter === 'Quotations' ? 'quotations' : 'documents'} match your filter.`
-                      : `No ${typeFilter === 'Quotations' ? 'quotations' : 'invoices'} yet. Click "New Invoice" to create one.`}
+                      : typeFilter === 'Quotations'
+                        ? 'No quotations yet. Click "New Invoice" to create one.'
+                        : typeFilter === 'Invoices'
+                          ? 'No invoices yet. Click "New Invoice" to create one.'
+                          : 'No documents yet. Click "New Invoice" to create one.'}
                   </td></tr>
                 : filtered.map(inv => (
                     <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)}>

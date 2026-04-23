@@ -143,13 +143,14 @@ export const Dashboard: React.FC = () => {
       sent_count: 3,
       sent_revenue: 9500,
       total_clients: 11,
+      quotation_count: 4,
     });
     setRecent([
-      { id: 1, invoice_number: 'INV-0024', client_name: 'Vertex Corp', status: 'Paid',    issue_date: '2026-04-15', due_date: '2026-04-30', grand_total: 8750 },
-      { id: 2, invoice_number: 'INV-0023', client_name: 'Lumina Tech', status: 'Draft',   issue_date: '2026-04-10', due_date: '2026-04-25', grand_total: 4200 },
-      { id: 3, invoice_number: 'INV-0022', client_name: 'Orion Labs',  status: 'Overdue', issue_date: '2026-03-28', due_date: '2026-04-12', grand_total: 6650 },
-      { id: 4, invoice_number: 'INV-0021', client_name: 'Apex Studio', status: 'Paid',    issue_date: '2026-03-20', due_date: '2026-04-04', grand_total: 3100 },
-      { id: 5, invoice_number: 'INV-0020', client_name: 'Nova Digital', status: 'Sent',   issue_date: '2026-03-14', due_date: '2026-03-29', grand_total: 9500 },
+      { id: 1, invoice_number: 'INV-0024', client_name: 'Vertex Corp', status: 'Paid',    issue_date: '2026-04-15', due_date: '2026-04-30', grand_total: 8750, type: 'Invoice' },
+      { id: 2, invoice_number: 'INV-0023', client_name: 'Lumina Tech', status: 'Draft',   issue_date: '2026-04-10', due_date: '2026-04-25', grand_total: 4200, type: 'Invoice' },
+      { id: 3, invoice_number: 'INV-0022', client_name: 'Orion Labs',  status: 'Overdue', issue_date: '2026-03-28', due_date: '2026-04-12', grand_total: 6650, type: 'Invoice' },
+      { id: 4, invoice_number: 'INV-0021', client_name: 'Apex Studio', status: 'Paid',    issue_date: '2026-03-20', due_date: '2026-04-04', grand_total: 3100, type: 'Invoice' },
+      { id: 5, invoice_number: 'INV-0020', client_name: 'Nova Digital', status: 'Sent',   issue_date: '2026-03-14', due_date: '2026-03-29', grand_total: 9500, type: 'Invoice' },
     ]);
     setMonthly([
       { month_label: 'Nov', revenue: 14200 },
