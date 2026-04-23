@@ -1022,9 +1022,16 @@ export const InvoiceEditor = () => {
         ))}
 
         <div className={`${styles.totalRow} ${styles.grandTotal}`}>
-          <span>Total Due</span>
+          <span>{invoiceMeta.status === 'Paid' ? 'Total Amount' : 'Total Due'}</span>
           <span>{formatCurrency(grandTotal, localization.locale, localization.currencyCode)}</span>
         </div>
+
+        {invoiceMeta.status === 'Paid' && (
+          <div className={styles.totalRow} style={{ color: 'var(--success-color)', fontWeight: 700, marginTop: 5 }}>
+            <span>Balance Due</span>
+            <span>{formatCurrency(0, localization.locale, localization.currencyCode)}</span>
+          </div>
+        )}
 
         <div style={{ marginTop: 25, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {isEditMode && invoiceMeta.status !== 'Paid' && (

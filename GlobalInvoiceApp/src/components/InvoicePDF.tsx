@@ -187,9 +187,17 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
               </View>
             ))}
             <View style={[styles.grandTotal, theme === 'branded' ? { backgroundColor: '#6366f1', color: 'white', padding: 10, borderRadius: 6 } : {}]}>
-              <Text style={[styles.grandTotalText, theme === 'branded' ? { color: 'white' } : {}]}>Total Amount</Text>
+              <Text style={[styles.grandTotalText, theme === 'branded' ? { color: 'white' } : {}]}>
+                {invoiceMeta.status === 'Paid' ? 'Total Amount' : 'Total Due'}
+              </Text>
               <Text style={[styles.grandTotalText, theme === 'branded' ? { color: 'white' } : {}]}>{formatCurrency(grandTotal, loc, cur)}</Text>
             </View>
+            {invoiceMeta.status === 'Paid' && (
+              <View style={[styles.totalRow, { marginTop: 5 }]}>
+                <Text style={[styles.bold, { color: '#10b981' }]}>Balance Due</Text>
+                <Text style={[styles.bold, { color: '#10b981' }]}>{formatCurrency(0, loc, cur)}</Text>
+              </View>
+            )}
           </View>
         </View>
 
