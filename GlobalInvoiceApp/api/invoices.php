@@ -132,6 +132,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->execute(); $stmt->close();
 
+            // Re-fetch the final token to ensure absolute accuracy in the response
+            $st2 = $conn->prepare("SELECT public_token FROM `{$invoicesTable}` WHERE id = ?");
+            $st2->bind_param("i", $id); $st2->execute();
+            $rt2 = $st2->get_result()->fetch_assoc(); $st2->close();
+            $finalToken = $rt2['public_token'] ?? $token;
+
             // Replace items
             $del = $conn->prepare("DELETE FROM `{$itemsTable}` WHERE invoice_id=?");
             $del->bind_param("i", $id); $del->execute(); $del->close();
@@ -149,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $si->close();
             }
             $conn->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Invoice updated', 'public_token' => $token]);
+            echo json_encode(['status' => 'success', 'message' => 'Invoice updated', 'public_token' => $finalToken]);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

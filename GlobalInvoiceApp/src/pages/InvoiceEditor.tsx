@@ -457,6 +457,12 @@ export const InvoiceEditor = () => {
       }
     }
     
+    // Final check for token
+    if (!token) {
+      // Fallback: check state one last time in case it updated
+      token = invoiceMeta.public_token;
+    }
+
     if (!token) {
       // If still no token and it was a new invoice, they are being navigated anyway
       if (!isEditMode) return; 
