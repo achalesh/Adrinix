@@ -156,6 +156,8 @@ export const InvoiceEditor = () => {
             public_token: inv.public_token || '',
             payment_method: inv.payment_method || '',
             payment_date: inv.payment_date || '',
+            type: inv.type || 'Invoice',
+            client_notes: inv.client_notes || '',
           });
           setClient({
             name: inv.client_name ?? '',
