@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import styles from './Sidebar.module.css';
@@ -131,6 +131,12 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
           <LogOut size={20} color="#fca5a5" />
           <span style={{ color: '#fca5a5' }}>Sign Out</span>
         </button>
+
+        <div className={styles.searchHint} onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}>
+          <div className={styles.hintIcon}><Search size={14} /></div>
+          <span>Search...</span>
+          <kbd className={styles.hintKbd}>⌘K</kbd>
+        </div>
       </nav>
 
       <div className={styles.brandBottom}>

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { ToastProvider } from './components/ToastProvider';
 import { LoadingView } from './components/LoadingView';
+import { CommandPalette } from './components/CommandPalette';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { useSettingsStore } from './store/useSettingsStore';
@@ -87,6 +88,7 @@ const ProtectedRoute = ({ children, hideSidebar = false }: { children: React.Rea
 
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <ToastProvider />
+      <CommandPalette />
       
       {/* Overlay for mobile */}
       {isSidebarOpen && (
