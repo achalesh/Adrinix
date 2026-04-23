@@ -99,13 +99,13 @@ function ensureTenantSchema($conn, $company_id)
 
     // ─── ROBUST MIGRATION: Ensure all columns exist ───
     $required_columns = [
-        'is_recurring' => "TINYINT(1) DEFAULT 0 AFTER notes",
-        'recurrence_period' => "ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none' AFTER is_recurring",
-        'next_generation_date' => "DATE DEFAULT NULL AFTER recurrence_period",
-        'last_generated_date' => "DATE DEFAULT NULL AFTER next_generation_date",
-        'recurrence_status' => "ENUM('active', 'paused', 'completed') DEFAULT 'active' AFTER last_generated_date",
-        'auto_send' => "TINYINT(1) DEFAULT 0 AFTER recurrence_status",
-        'public_token' => "VARCHAR(64) UNIQUE AFTER auto_send"
+        'is_recurring' => "TINYINT(1) DEFAULT 0",
+        'recurrence_period' => "ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none'",
+        'next_generation_date' => "DATE DEFAULT NULL",
+        'last_generated_date' => "DATE DEFAULT NULL",
+        'recurrence_status' => "ENUM('active', 'paused', 'completed') DEFAULT 'active'",
+        'auto_send' => "TINYINT(1) DEFAULT 0",
+        'public_token' => "VARCHAR(64) UNIQUE"
     ];
 
     foreach ($required_columns as $col => $definition) {
@@ -116,6 +116,8 @@ function ensureTenantSchema($conn, $company_id)
             }
         } catch (Exception $e) {
             error_log("Migration column $col failed: " . $e->getMessage());
+            // If display_errors is ON, re-throw to see the error in the browser
+            if (ini_get('display_errors')) throw $e;
         }
     }
 
