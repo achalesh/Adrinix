@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Plus, Edit2, Trash2, Search,
-  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2
+  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2, MessageCircle
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -107,6 +107,17 @@ export const InvoiceList: React.FC = () => {
     const url = `${window.location.origin}/portal/${activeCompanyId}/${inv.public_token}`;
     navigator.clipboard.writeText(url);
     showToast('Client portal link copied to clipboard!', 'success');
+  };
+
+  const handleWhatsappShare = (inv: Invoice, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!inv.public_token) {
+      showToast('Please open and save the invoice once to generate a share link.', 'info');
+      return;
+    }
+    const url = `${window.location.origin}/portal/${activeCompanyId}/${inv.public_token}`;
+    const text = `Hello! Here is your invoice ${inv.invoice_number} from ${useSettingsStore.getState().company.name}. You can view and download it here: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
   const filtered = useMemo(() => invoices.filter(inv => {
     const q = search.toLowerCase();
@@ -262,6 +273,13 @@ export const InvoiceList: React.FC = () => {
                             onClick={(e) => handleShare(inv, e)}
                           >
                             <Share2 size={14} />
+                          </button>
+                          <button
+                            className={`${styles.iconBtn} ${styles.iconBtnWhatsapp}`}
+                            title="Share via WhatsApp"
+                            onClick={(e) => handleWhatsappShare(inv, e)}
+                          >
+                            <MessageCircle size={14} />
                           </button>
                           <button
                             className={`${styles.iconBtn} ${styles.iconBtnDanger}`}

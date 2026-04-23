@@ -103,6 +103,15 @@
   color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease;
 }
 .iconBtn:hover { background: rgba(99,102,241,0.15); border-color: var(--primary-color); color: var(--text-primary); }
+.iconBtnWhatsapp {
+  color: #25d366 !important;
+}
+
+.iconBtnWhatsapp:hover {
+  background: rgba(37, 211, 102, 0.1) !important;
+  border-color: #25d366 !important;
+}
+
 .iconBtnDanger:hover { background: rgba(239,68,68,0.12); border-color: #ef4444; color: #ef4444; }
 
 /* Status dropdown in table */

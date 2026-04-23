@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, MessageCircle, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -476,6 +476,19 @@ export const InvoiceEditor = () => {
     showToast('Client portal link copied to clipboard!', 'success');
   };
 
+  const handleWhatsappShare = async () => {
+    let token = invoiceMeta.public_token;
+    if (!token) {
+      const result = await handleSaveInvoice() as any;
+      if (result && result.success) token = result.token;
+    }
+    if (!token) return;
+
+    const url = `${window.location.origin}/portal/${activeCompanyId}/${token}`;
+    const text = `Hello! Here is your invoice ${invoiceMeta.invoice_number} from ${useSettingsStore.getState().company.name}. You can view and download it here: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
   return (
     <div className={styles.editorContainer}>
       <header className={styles.headerActions}>
@@ -492,6 +505,10 @@ export const InvoiceEditor = () => {
           
           <button className="btn-secondary" onClick={handleShareLink} title="Copy shareable client portal link">
             <Share2 size={16} /> Share Link
+          </button>
+
+          <button className="btn-secondary" onClick={handleWhatsappShare} title="Share via WhatsApp">
+            <MessageCircle size={16} /> WhatsApp
           </button>
 
           {/* PDF Download Button */}
