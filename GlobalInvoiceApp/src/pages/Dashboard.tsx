@@ -113,9 +113,12 @@ export const Dashboard: React.FC = () => {
         setRecent(payload.data.recent_invoices);
         setMonthly(payload.data.monthly_revenue);
       } else {
+        showToast(payload.message || 'Failed to load dashboard data', 'error');
         loadDemoData();
       }
-    } catch {
+    } catch (e: any) {
+      console.error('Dashboard Error:', e);
+      showToast(`Connection Error: ${e.message}`, 'error');
       loadDemoData();
     } finally {
       setIsLoading(false);

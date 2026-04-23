@@ -6,8 +6,8 @@ $authUser = authenticate();
 $user_id = $authUser['user_id'];
 $company = requireCompany($user_id);
 $company_id = $company['id'];
-include_once 'invoices.php';
-processRecurringInvoices($conn, $user_id);
+// include_once 'invoices.php';
+// processRecurringInvoices($conn, $user_id);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);

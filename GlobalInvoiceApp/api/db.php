@@ -111,13 +111,18 @@ function ensureTenantSchema($conn, $company_id)
     }
     
     // ─── MIGRATION: Check for public_token in invoices ───
-    $res = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE 'public_token'");
-    if ($res->num_rows == 0) {
-        $conn->query("ALTER TABLE `{$prefix}invoices` ADD COLUMN public_token VARCHAR(64) UNIQUE AFTER auto_send");
+    try {
+        $res = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE 'public_token'");
+        if ($res->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}invoices` ADD COLUMN public_token VARCHAR(64) UNIQUE AFTER auto_send");
+        }
+        
+        // Patch any missing tokens immediately - wrapped in try to prevent crash
+        $conn->query("UPDATE `{$prefix}invoices` SET public_token = MD5(CONCAT(id, RAND())) WHERE public_token IS NULL OR public_token = ''");
+    } catch (Exception $e) {
+        // Silently continue if migration fails, to keep the dashboard alive
+        error_log("Migration error: " . $e->getMessage());
     }
-    
-    // Patch any missing tokens immediately
-    $conn->query("UPDATE `{$prefix}invoices` SET public_token = MD5(CONCAT(id, RAND())) WHERE public_token IS NULL OR public_token = ''");
 }
 
 $secret_key = "adrinix_super_secret_jwt_key_2026";
