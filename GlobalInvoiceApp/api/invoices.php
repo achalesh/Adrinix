@@ -11,11 +11,17 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
     $itemsTable = t('invoice_items');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $client_id = (int)($_GET['client_id'] ?? 0);
+        $where = "WHERE 1=1";
+        if ($client_id) {
+            $where .= " AND i.client_id = $client_id";
+        }
+        
         $query = "
             SELECT i.*, c.name AS client_name
             FROM `{$invoicesTable}` i
             LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
-            WHERE 1=1 ORDER BY i.created_at DESC
+            $where ORDER BY i.created_at DESC
         ";
         $stmt = $conn->prepare($query);
         // No bind_param needed for 1=1

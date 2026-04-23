@@ -180,6 +180,74 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+.clientNameLink {
+  fontWeight: 600;
+  transition: color 0.2s;
+}
+
+.clientNameLink:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.detailItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.miniStatCard {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.historyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.historyItem:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--panel-border);
+  transform: translateX(4px);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotDraft { background: #94a3b8; }
+.dotSent { background: #6366f1; }
+.dotPaid { background: #10b981; }
+.dotOverdue { background: #ef4444; }
+
 /* Stats Grid */
 .statsGrid {
   display: grid;

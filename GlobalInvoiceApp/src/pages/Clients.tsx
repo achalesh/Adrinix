@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Edit2, Trash2, Mail, Phone, BookOpen, X, Search } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Mail, Phone, BookOpen, X, Search, FileText, ExternalLink, Calendar, CreditCard } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { useSettingsStore } from '../store/useSettingsStore';
@@ -34,6 +34,12 @@ export const Clients = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Partial<Client>>({});
 
+  // View Details State
+  const [viewingClient, setViewingClient] = useState<Client | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [clientInvoices, setClientInvoices] = useState<any[]>([]);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+
   useEffect(() => {
     fetchClients();
   }, [activeCompanyId]);
@@ -51,6 +57,27 @@ export const Clients = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchClientInvoices = async (clientId: number) => {
+    setIsLoadingInvoices(true);
+    try {
+      const res = await authFetch(`${API_BASE}/invoices.php?client_id=${clientId}`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        setClientInvoices(data.data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch client invoices', e);
+    } finally {
+      setIsLoadingInvoices(false);
+    }
+  };
+
+  const handleViewClient = (client: Client) => {
+    setViewingClient(client);
+    setIsViewModalOpen(true);
+    fetchClientInvoices(client.id);
   };
 
   const stats = {
@@ -170,11 +197,11 @@ export const Clients = () => {
             <tbody>
               {filteredClients.map(client => (
                 <tr key={client.id}>
-                  <td>
+                  <td onClick={() => handleViewClient(client)} style={{ cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div className={styles.avatarBox}><Users size={16} /></div>
                       <div>
-                        <div style={{ fontWeight: 600 }}>{client.name}</div>
+                        <div className={styles.clientNameLink}>{client.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Joined {new Date(client.created_at).toLocaleDateString()}</div>
                       </div>
                     </div>
@@ -272,6 +299,106 @@ export const Clients = () => {
                 <button type="submit" className="btn-primary">Save Client Record</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {isViewModalOpen && viewingClient && (
+        <div className={styles.modalOverlay}>
+          <div className={`glass-panel ${styles.modalContent}`} style={{ maxWidth: '800px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div className={styles.avatarBox} style={{ width: '48px', height: '48px' }}><Users size={24} /></div>
+                <div>
+                  <h2 style={{ fontSize: '24px', margin: 0 }}>{viewingClient.name}</h2>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Client since {new Date(viewingClient.created_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsViewModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
+              {/* Left Column: Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className={styles.infoSection}>
+                  <label className={styles.detailLabel}>Contact Information</label>
+                  <div className={styles.detailItem}><Mail size={14} /> {viewingClient.email || 'No Email'}</div>
+                  <div className={styles.detailItem}><Phone size={14} /> {viewingClient.phone || 'No Phone'}</div>
+                </div>
+                
+                <div className={styles.infoSection}>
+                  <label className={styles.detailLabel}>Tax Details</label>
+                  <div className={styles.detailItem}><CreditCard size={14} /> {viewingClient.tax_id || 'Not recorded'}</div>
+                </div>
+
+                <div className={styles.infoSection}>
+                  <label className={styles.detailLabel}>Billing Address</label>
+                  <div style={{ fontSize: '13px', lineHeight: 1.6, opacity: 0.8, background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
+                    {viewingClient.billing_address || 'No address recorded'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Financials & History */}
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+                  <div className={styles.miniStatCard}>
+                    <div style={{ color: '#10b981', fontWeight: 700, fontSize: '18px' }}>
+                      {formatCurrency(Number(viewingClient.total_paid), localization.locale, localization.currencyCode)}
+                    </div>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.6 }}>Total Paid</div>
+                  </div>
+                  <div className={styles.miniStatCard}>
+                    <div style={{ color: '#ef4444', fontWeight: 700, fontSize: '18px' }}>
+                      {formatCurrency(Number(viewingClient.total_pending), localization.locale, localization.currencyCode)}
+                    </div>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.6 }}>Outstanding</div>
+                  </div>
+                </div>
+
+                <div className={styles.historySection}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <label className={styles.detailLabel} style={{ margin: 0 }}>Recent Invoices</label>
+                    <button 
+                      className="btn-secondary" 
+                      style={{ padding: '4px 10px', fontSize: '12px' }}
+                      onClick={() => navigate(`/invoices?client=${viewingClient.name}`)}
+                    >
+                      View All
+                    </button>
+                  </div>
+                  
+                  {isLoadingInvoices ? (
+                    <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', opacity: 0.5 }}>Loading history...</div>
+                  ) : clientInvoices.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', opacity: 0.5 }}>No invoices found for this client.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxH: '300px', overflowY: 'auto' }}>
+                      {clientInvoices.slice(0, 5).map(inv => (
+                        <div key={inv.id} className={styles.historyItem} onClick={() => navigate(`/invoices/${inv.id}`)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className={`${styles.statusDot} ${styles['dot' + inv.status]}`} />
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '13px' }}>#{inv.invoice_number}</div>
+                              <div style={{ fontSize: '11px', opacity: 0.5 }}>{new Date(inv.issue_date).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: '13px' }}>
+                            {formatCurrency(Number(inv.grand_total), localization.locale, localization.currencyCode)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
