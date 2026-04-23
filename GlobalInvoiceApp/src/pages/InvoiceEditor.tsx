@@ -58,6 +58,36 @@ export const InvoiceEditor = () => {
     { id: generateId(), description: '', quantity: 1, unit_price: 0, tax_method: 'exclusive', tax_profile_id: '' }
   ]);
 
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) => e.target.select();
+
+  const handleItemKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (field === 'description') {
+        const row = e.currentTarget.closest('tr');
+        row?.querySelector<HTMLInputElement>('input[type="number"]')?.focus();
+      } else if (field === 'unit_price') {
+        if (index === items.length - 1) {
+          handleAddItem();
+          setTimeout(() => {
+            const rows = document.querySelectorAll(`.${styles.itemsTable} tbody tr`);
+            rows[rows.length - 1]?.querySelector<HTMLInputElement>('input')?.focus();
+          }, 0);
+        } else {
+          const rows = document.querySelectorAll(`.${styles.itemsTable} tbody tr`);
+          rows[index + 1]?.querySelector<HTMLInputElement>('input')?.focus();
+        }
+      }
+    }
+  };
+
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(isEditMode);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -491,7 +521,7 @@ export const InvoiceEditor = () => {
 
   return (
     <div className={styles.editorContainer}>
-      <header className={styles.headerActions}>
+      <header className={`${styles.headerActions} ${isScrolled ? styles.headerScrolled : ''}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button className="btn-secondary" style={{ padding: '8px 12px' }} onClick={() => navigate('/invoices')}>
             <ArrowLeft size={16} />
@@ -730,21 +760,44 @@ export const InvoiceEditor = () => {
           <tbody>
             {items.map((item, index) => (
               <tr key={item.id}>
-                <td>
+                <td className={styles.colDesc}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input className="input-field" placeholder="Description of service..." value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} style={{ flex: 1 }} />
+                    <input 
+                      className="input-field" 
+                      placeholder="Description of service..." 
+                      value={item.description} 
+                      onChange={e => updateItem(item.id, 'description', e.target.value)} 
+                      onFocus={selectOnFocus}
+                      onKeyDown={e => handleItemKeyDown(e, index, 'description')}
+                      style={{ flex: 1 }} 
+                    />
                     <button type="button" title="Pick from catalog" className="btn-secondary" style={{ padding: '8px 10px', flexShrink: 0 }} onClick={() => openCatalog(item.id)}>
                       <BookOpen size={15} />
                     </button>
                   </div>
                 </td>
-                <td>
-                  <input className="input-field" type="number" min="1" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)} />
+                <td className={styles.colQty}>
+                  <input 
+                    className="input-field" 
+                    type="number" 
+                    min="1" 
+                    value={item.quantity} 
+                    onFocus={selectOnFocus}
+                    onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)} 
+                  />
                 </td>
-                <td>
-                  <input className="input-field" type="number" step="0.01" value={item.unit_price} onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)} />
+                <td className={styles.colPrice}>
+                  <input 
+                    className="input-field" 
+                    type="number" 
+                    step="0.01" 
+                    value={item.unit_price} 
+                    onFocus={selectOnFocus}
+                    onKeyDown={e => handleItemKeyDown(e, index, 'unit_price')}
+                    onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)} 
+                  />
                 </td>
-                <td>
+                <td className={styles.colTaxType}>
                   <button 
                     onClick={() => updateItem(item.id, 'tax_method', item.tax_method === 'inclusive' ? 'exclusive' : 'inclusive')}
                     style={{
@@ -758,7 +811,7 @@ export const InvoiceEditor = () => {
                     {item.tax_method || 'exclusive'}
                   </button>
                 </td>
-                <td>
+                <td className={styles.colTax}>
                   <select className="input-field" value={item.tax_profile_id} onChange={e => updateItem(item.id, 'tax_profile_id', e.target.value ? Number(e.target.value) : '')}>
                     <option value="">No Tax</option>
                     {taxProfiles.map(t => (
@@ -766,7 +819,7 @@ export const InvoiceEditor = () => {
                     ))}
                   </select>
                 </td>
-                <td style={{ verticalAlign: 'middle' }}>
+                <td className={styles.colActions}>
                   <button className="btn-secondary" style={{ padding: '8px', color: 'var(--danger-color)' }} onClick={() => handleRemoveItem(item.id)}>
                     <Trash2 size={16} />
                   </button>
@@ -778,236 +831,244 @@ export const InvoiceEditor = () => {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-          <button className="btn-secondary" onClick={handleAddItem}>
-            <Plus size={16} /> Add Line Item
-          </button>
-          <button className="btn-secondary" onClick={() => { handleAddItem(); }} style={{ opacity: 0.7, fontSize: 13 }}>
-            <BookOpen size={15} /> Add from Catalog
-          </button>
+        <button className="btn-secondary" onClick={handleAddItem}>
+          <Plus size={16} /> Add Line Item
+        </button>
+        <button className="btn-secondary" onClick={() => { setCatalogOpen(true); }} style={{ opacity: 0.7, fontSize: 13 }}>
+          <BookOpen size={15} /> Add from Catalog
+        </button>
+      </div>
+    </div> {/* itemsSection */}
+
+    <div className="glass-panel">
+      <div className="form-group">
+        <label>Notes / Payment Terms</label>
+        <textarea className="input-field" rows={5} value={invoiceMeta.notes} onChange={e => setInvoiceMeta({...invoiceMeta, notes: e.target.value})} placeholder="Thank you for your business..."></textarea>
+      </div>
+    </div>
+  </div> {/* formPane */}
+
+      {/* Persistent Totals Box */}
+      <aside className={styles.totalsBox}>
+        <h3 style={{ fontSize: 16, marginBottom: 15, color: 'var(--text-primary)' }}>Invoice Summary</h3>
+        <div className={styles.totalRow}>
+          <span>Subtotal</span>
+          <span>{formatCurrency(subtotal, localization.locale, localization.currencyCode)}</span>
+        </div>
+        
+        {Object.entries(taxBreakdown).map(([label, amount]) => (
+          <div key={label} className={styles.totalRow + ' ' + styles.taxBreakdown}>
+            <span>{label}</span>
+            <span>{formatCurrency(amount, localization.locale, localization.currencyCode)}</span>
+          </div>
+        ))}
+
+        <div className={`${styles.totalRow} ${styles.grandTotal}`}>
+          <span>Total Due</span>
+          <span>{formatCurrency(grandTotal, localization.locale, localization.currencyCode)}</span>
         </div>
 
-        <div className="flex-stack-mobile" style={{ marginTop: '30px' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ marginTop: 25, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button className="btn-primary" style={{ width: '100%', height: 48 }} onClick={handleSaveInvoice} disabled={isSaving}>
+            <Save size={18} /> {isSaving ? 'Saving...' : isEditMode ? 'Update Invoice' : 'Save Draft'}
+          </button>
+          <button className="btn-secondary" style={{ width: '100%' }} onClick={handleExportPDF} disabled={isExporting}>
+            <Download size={16} /> Export PDF
+          </button>
+        </div>
+      </aside>
+    </div> {/* editorLayout */}
+
+    {/* ── Client Picker Modal ────────────────────────────────────────── */}
+    {clientPickerOpen && (
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: 20, animation: 'fadeIn 0.15s ease'
+      }}>
+        <div className="glass-panel" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Select a Client</h3>
+            <button onClick={() => setClientPickerOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', borderRadius: 6, padding: 4 }}>
+              <X size={22} />
+            </button>
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+            <input
+              autoFocus
+              className="input-field"
+              style={{ paddingLeft: 38 }}
+              placeholder="Search by name or email..."
+              value={clientSearch}
+              onChange={e => setClientSearch(e.target.value)}
+            />
+          </div>
+
+          <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filteredClients.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+                No clients found.
+              </div>
+            ) : filteredClients.map(c => (
+              <button
+                key={c.id}
+                onClick={() => pickClient(c)}
+                className={styles.clientPickBtn}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+              >
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{c.email || 'No email provided'}</div>
+                  {c.billing_address && (
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '350px' }}>
+                      📍 {c.billing_address}
+                    </div>
+                  )}
+                </div>
+                <User size={16} style={{ color: 'var(--primary-color)', opacity: 0.6 }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Catalog Picker Modal ────────────────────────────────────────── */}
+    {catalogOpen && (
+      <div style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: 20, animation: 'fadeIn 0.15s ease'
+      }}>
+        <div className="glass-panel" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Pick from Catalog</h3>
+            <button onClick={() => setCatalogOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', borderRadius: 6, padding: 4 }}>
+              <X size={22} />
+            </button>
+          </div>
+
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+            <input
+              autoFocus
+              className="input-field"
+              style={{ paddingLeft: 38 }}
+              placeholder="Search products..."
+              value={catalogSearch}
+              onChange={e => setCatalogSearch(e.target.value)}
+            />
+          </div>
+
+          {/* List */}
+          <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filteredCatalog.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+                {catalogItems.length === 0 ? 'No products found. Add products in the Products section.' : 'No matches for your search.'}
+              </div>
+            ) : filteredCatalog.map(p => (
+              <button
+                key={p.id}
+                onClick={() => pickProduct(p)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 16px', borderRadius: 10,
+                  border: '1px solid var(--panel-border)',
+                  background: 'rgba(255,255,255,0.03)',
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                  color: 'var(--text-primary)'
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.12)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</div>
+                  {p.category && <div style={{ fontSize: 11, color: '#818cf8', marginTop: 2 }}>{p.category}</div>}
+                  {p.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.description}</div>}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>
+                    {formatCurrency(p.unit_price, localization?.locale, localization?.currencyCode)}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/{p.unit}</div>
+                  {p.tax_label && <div style={{ fontSize: 11, color: '#34d399', marginTop: 2 }}>{p.tax_label}</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Email Modal */}
+    {emailModalOpen && (
+      <div className={styles.modalOverlay}>
+        <div className={`${styles.modalContent} glass-panel animate-fade-in`}>
+          <div className={styles.modalHeader}>
+            <h2 className={styles.modalTitle}><Send size={20} /> Send Invoice via Email</h2>
+            <button className={styles.closeButton} onClick={() => setEmailModalOpen(false)}>
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className={styles.modalBody}>
             <div className="form-group">
-              <label>Notes / Payment Terms</label>
-              <textarea className="input-field" rows={5} value={invoiceMeta.notes} onChange={e => setInvoiceMeta({...invoiceMeta, notes: e.target.value})}></textarea>
+              <label>To (Recipient Email)</label>
+              <input 
+                type="email" 
+                value={emailData.to} 
+                onChange={e => setEmailData({...emailData, to: e.target.value})}
+                placeholder="client@example.com"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Subject</label>
+              <input 
+                type="text" 
+                value={emailData.subject} 
+                onChange={e => setEmailData({...emailData, subject: e.target.value})}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Message Body</label>
+              <textarea 
+                rows={8}
+                style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '14px', resize: 'vertical' }}
+                value={emailData.body}
+                onChange={e => setEmailData({...emailData, body: e.target.value})}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px' }}>
+              <Download size={16} style={{ color: 'var(--success-color)' }} />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Invoice <strong style={{ color: 'var(--text-primary)' }}>{invoiceMeta.invoice_number}.pdf</strong> will be attached.
+              </span>
             </div>
           </div>
           
-          <div className={styles.totalsBox}>
-            <div className={styles.totalRow}>
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotal, localization.locale, localization.currencyCode)}</span>
-            </div>
-            
-            {Object.entries(taxBreakdown).map(([label, amount]) => (
-              <div key={label} className={styles.totalRow + ' ' + styles.taxBreakdown}>
-                <span>{label}</span>
-                <span>{formatCurrency(amount, localization.locale, localization.currencyCode)}</span>
-              </div>
-            ))}
-
-            <div className={`${styles.totalRow} ${styles.grandTotal}`}>
-              <span>Total Due</span>
-              <span>{formatCurrency(grandTotal, localization.locale, localization.currencyCode)}</span>
-            </div>
-          </div> {/* totalsBox */}
-          </div> {/* flex-stack-mobile */}
-        </div> {/* Items List / itemsSection */}
-      </div> {/* formPane */}
-
-    </div> {/* editorLayout */}
-
-
-      {/* ── Client Picker Modal ────────────────────────────────────────── */}
-      {clientPickerOpen && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 20, animation: 'fadeIn 0.15s ease'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>Select a Client</h3>
-              <button onClick={() => setClientPickerOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', borderRadius: 6, padding: 4 }}>
-                <X size={22} />
-              </button>
-            </div>
-
-            <div style={{ position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              <input
-                autoFocus
-                className="input-field"
-                style={{ paddingLeft: 38 }}
-                placeholder="Search by name or email..."
-                value={clientSearch}
-                onChange={e => setClientSearch(e.target.value)}
-              />
-            </div>
-
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredClients.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
-                  No clients found.
-                </div>
-              ) : filteredClients.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => pickClient(c)}
-                  className={styles.clientPickBtn}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.12)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                >
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{c.email || 'No email provided'}</div>
-                    {c.billing_address && (
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '350px' }}>
-                        📍 {c.billing_address}
-                      </div>
-                    )}
-                  </div>
-                  <User size={16} style={{ color: 'var(--primary-color)', opacity: 0.6 }} />
-                </button>
-              ))}
-            </div>
+          <div className={styles.modalFooter}>
+            <button className="btn-secondary" onClick={() => setEmailModalOpen(false)}>Cancel</button>
+            <button 
+              className="btn-primary" 
+              onClick={handleSendEmailFinal} 
+              disabled={isSendingEmail}
+            >
+              <Send size={16} /> {isSendingEmail ? 'Sending...' : 'Send Now'}
+            </button>
           </div>
         </div>
-      )}
-
-      {/* ── Catalog Picker Modal ────────────────────────────────────────── */}
-      {catalogOpen && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 20, animation: 'fadeIn 0.15s ease'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>Pick from Catalog</h3>
-              <button onClick={() => setCatalogOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', borderRadius: 6, padding: 4 }}>
-                <X size={22} />
-              </button>
-            </div>
-
-            {/* Search */}
-            <div style={{ position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              <input
-                autoFocus
-                className="input-field"
-                style={{ paddingLeft: 38 }}
-                placeholder="Search products..."
-                value={catalogSearch}
-                onChange={e => setCatalogSearch(e.target.value)}
-              />
-            </div>
-
-            {/* List */}
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredCatalog.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
-                  {catalogItems.length === 0 ? 'No products found. Add products in the Products section.' : 'No matches for your search.'}
-                </div>
-              ) : filteredCatalog.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => pickProduct(p)}
-                  style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 16px', borderRadius: 10,
-                    border: '1px solid var(--panel-border)',
-                    background: 'rgba(255,255,255,0.03)',
-                    cursor: 'pointer', textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                    color: 'var(--text-primary)'
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.12)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</div>
-                    {p.category && <div style={{ fontSize: 11, color: '#818cf8', marginTop: 2 }}>{p.category}</div>}
-                    {p.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.description}</div>}
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>
-                      {formatCurrency(p.unit_price, localization?.locale, localization?.currencyCode)}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/{p.unit}</div>
-                    {p.tax_label && <div style={{ fontSize: 11, color: '#34d399', marginTop: 2 }}>{p.tax_label}</div>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Email Modal */}
-      {emailModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass-panel animate-fade-in`}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}><Send size={20} /> Send Invoice via Email</h2>
-              <button className={styles.closeButton} onClick={() => setEmailModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className={styles.modalBody}>
-              <div className="form-group">
-                <label>To (Recipient Email)</label>
-                <input 
-                  type="email" 
-                  value={emailData.to} 
-                  onChange={e => setEmailData({...emailData, to: e.target.value})}
-                  placeholder="client@example.com"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>Subject</label>
-                <input 
-                  type="text" 
-                  value={emailData.subject} 
-                  onChange={e => setEmailData({...emailData, subject: e.target.value})}
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>Message Body</label>
-                <textarea 
-                  rows={8}
-                  style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: '14px', resize: 'vertical' }}
-                  value={emailData.body}
-                  onChange={e => setEmailData({...emailData, body: e.target.value})}
-                />
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px' }}>
-                <Download size={16} style={{ color: 'var(--success-color)' }} />
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Invoice <strong style={{ color: 'var(--text-primary)' }}>{invoiceMeta.invoice_number}.pdf</strong> will be attached.
-                </span>
-              </div>
-            </div>
-            
-            <div className={styles.modalFooter}>
-              <button className="btn-secondary" onClick={() => setEmailModalOpen(false)}>Cancel</button>
-              <button 
-                className="btn-primary" 
-                onClick={handleSendEmailFinal} 
-                disabled={isSendingEmail}
-              >
-                <Send size={16} /> {isSendingEmail ? 'Sending...' : 'Send Now'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 };

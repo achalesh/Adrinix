@@ -27,12 +27,28 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 15px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-color);
+  padding: 20px 0;
+  z-index: 100;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s;
+}
+
+.headerScrolled {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 12px 20px;
+  margin: 0 -20px;
+  border-bottom: 1px solid var(--panel-border);
 }
 
 @media (max-width: 640px) {
   .headerActions {
     flex-direction: column;
     align-items: flex-start;
+    padding: 10px 0;
   }
   .headerActions > div {
     width: 100%;
@@ -41,15 +57,16 @@
 }
 
 .title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
 .invoiceMetaGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 10px;
 }
 
 .clientSection h3, .itemsSection h3 {
@@ -62,75 +79,112 @@
   gap: 10px;
 }
 
+.editorLayout {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 30px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .editorLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formPane {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .itemsTable {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
-  min-width: 800px;
 }
 
 .itemsTableWrapper {
   overflow-x: auto;
-  margin-bottom: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .itemsTable th {
   text-align: left;
-  padding: 12px;
+  padding: 14px 12px;
   color: var(--text-secondary);
-  font-weight: 500;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   border-bottom: 1px solid var(--panel-border);
 }
 
 .itemsTable td {
-  padding: 10px;
-  vertical-align: top;
+  padding: 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .itemsTable input, .itemsTable select {
   width: 100%;
 }
 
-.itemsTable .colDesc { width: 40%; }
-.itemsTable .colQty { width: 15%; }
-.itemsTable .colPrice { width: 20%; }
-.itemsTable .colTax { width: 20%; }
-.itemsTable .colActions { width: 5%; text-align: center; }
+.itemsTable .colDesc { width: auto; }
+.itemsTable .colQty { width: 80px; }
+.itemsTable .colPrice { width: 140px; }
+.itemsTable .colTaxType { width: 100px; }
+.itemsTable .colTax { width: 160px; }
+.itemsTable .colActions { width: 50px; text-align: center; }
+
+@media (max-width: 850px) {
+  .itemsTable thead { display: none; }
+  .itemsTable tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 15px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .itemsTable td { padding: 0; border: none; }
+  .itemsTable td:first-child { grid-column: 1 / -1; }
+  .itemsTable .colActions { grid-column: 1 / -1; text-align: right; margin-top: 10px; }
+}
 
 .totalsBox {
-  width: 350px;
-  margin-left: auto;
-  background: rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 100px;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
 }
 
 .totalRow {
   display: flex;
   justify-content: space-between;
-  padding: 10px 0;
-  font-size: 15px;
+  padding: 12px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .totalRow.grandTotal {
   border-top: 1px solid var(--panel-border);
-  margin-top: 10px;
-  padding-top: 15px;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--success-color);
+  margin-top: 12px;
+  padding-top: 18px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .taxBreakdown {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  padding: 5px 0 5px 15px;
-  border-left: 2px solid rgba(255,255,255,0.1);
-  margin: 5px 0;
+  padding: 4px 0 4px 12px;
+  border-left: 2px solid var(--primary-color);
+  opacity: 0.8;
 }
 
 /* Email Modal */
