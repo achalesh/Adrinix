@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { API_BASE } from '../config/api';
+import { AdrinixLogo } from '../components/Logo';
+import { Mail, Lock, Building, ArrowRight } from 'lucide-react';
 import styles from './Login.module.css';
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
@@ -85,83 +87,147 @@ export const Login = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.authBox}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <img src="/logo.png" alt="Adrinix Logo" style={{ width: '60px', marginBottom: '10px' }} />
-          <h2 style={{ margin: 0, fontSize: '24px' }}>
-            {mode === 'login' && 'Welcome Back'}
-            {mode === 'register' && 'Create Account'}
-            {mode === 'forgot' && 'Reset Password'}
-            {mode === 'reset' && 'Create New Password'}
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '5px' }}>
-            {mode === 'login' && 'Enter your credentials to access the portal'}
-            {mode === 'register' && 'Set up your Adrinix billing workspace'}
-            {mode === 'forgot' && 'We will send a secure link to your email'}
-            {mode === 'reset' && 'Secure your account with a fresh password'}
-          </p>
+      <div className={styles.backgroundGlow} />
+      
+      <div className={styles.authWrapper}>
+        <div className={styles.brandSide}>
+          <div className={styles.brandContent}>
+            <AdrinixLogo size={60} className={styles.floatingLogo} />
+            <h1 className={styles.brandTitle}>Adrinix</h1>
+            <p className={styles.brandTagline}>Smart Billing. Anywhere.</p>
+            
+            <div className={styles.featureList}>
+              <div className={styles.featureItem}>
+                <div className={styles.featureIcon}><ArrowRight size={14} /></div>
+                <span>Multi-tenant secure workspace</span>
+              </div>
+              <div className={styles.featureItem}>
+                <div className={styles.featureIcon}><ArrowRight size={14} /></div>
+                <span>Automated recurring billing</span>
+              </div>
+              <div className={styles.featureItem}>
+                <div className={styles.featureIcon}><ArrowRight size={14} /></div>
+                <span>Premium branded portals</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {error && <div className={styles.errorAlert}>{error}</div>}
-        {success && <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '12px', borderRadius: '8px', fontSize: '14px', marginBottom: '20px', textAlign: 'center' }}>{success}</div>}
+        <div className={styles.formSide}>
+          <div className={`${styles.authBox} glass-panel`}>
+            <div className={styles.formHeader}>
+              <h2 className={styles.formTitle}>
+                {mode === 'login' && 'Welcome Back'}
+                {mode === 'register' && 'Get Started'}
+                {mode === 'forgot' && 'Reset Password'}
+                {mode === 'reset' && 'New Password'}
+              </h2>
+              <p className={styles.formSubtitle}>
+                {mode === 'login' && 'Enter your credentials to continue'}
+                {mode === 'register' && 'Create your business workspace today'}
+                {mode === 'forgot' && 'We will send recovery instructions'}
+                {mode === 'reset' && 'Choose a strong new password'}
+              </p>
+            </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {mode === 'register' && (
-            <div className="form-group">
-              <label>Business Name</label>
-              <input className="input-field" required value={company} onChange={e => setCompany(e.target.value)} placeholder="Adrinix Ltd." />
-            </div>
-          )}
-          
-          {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
-            <div className="form-group">
-              <label>Email Address</label>
-              <input className="input-field" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" />
-            </div>
-          )}
-          
-          {(mode === 'login' || mode === 'register' || mode === 'reset') && (
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <label>Password</label>
-                {mode === 'login' && (
-                  <button type="button" onClick={() => { setMode('forgot'); setError(''); setSuccess(''); }} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '12px', cursor: 'pointer', padding: 0 }}>
-                    Forgot?
-                  </button>
+            {error && <div className={styles.errorAlert}>{error}</div>}
+            {success && <div className={styles.successAlert}>{success}</div>}
+
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {mode === 'register' && (
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Business Name</label>
+                  <div className={styles.inputWrapper}>
+                    <Building className={styles.inputIcon} size={18} />
+                    <input 
+                      className={styles.input} 
+                      required 
+                      value={company} 
+                      onChange={e => setCompany(e.target.value)} 
+                      placeholder="e.g. Acme Corp" 
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Email Address</label>
+                  <div className={styles.inputWrapper}>
+                    <Mail className={styles.inputIcon} size={18} />
+                    <input 
+                      className={styles.input} 
+                      type="email" 
+                      required 
+                      value={email} 
+                      onChange={e => setEmail(e.target.value)} 
+                      placeholder="name@company.com" 
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+                <div className={styles.inputGroup}>
+                  <div className={styles.labelRow}>
+                    <label className={styles.label}>Password</label>
+                    {mode === 'login' && (
+                      <button type="button" onClick={() => setMode('forgot')} className={styles.forgotLink}>
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
+                  <div className={styles.inputWrapper}>
+                    <Lock className={styles.inputIcon} size={18} />
+                    <input 
+                      className={styles.input} 
+                      type="password" 
+                      required 
+                      value={password} 
+                      onChange={e => setPassword(e.target.value)} 
+                      placeholder="••••••••" 
+                      minLength={6} 
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button type="submit" className="btn-primary" style={{ width: '100%', height: '48px' }} disabled={isLoading}>
+                {isLoading ? 'Processing...' : (
+                  mode === 'login' ? 'Login to Portal' :
+                  mode === 'register' ? 'Create Account' :
+                  mode === 'forgot' ? 'Send Link' :
+                  'Update Password'
                 )}
-              </div>
-              <input className="input-field" type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" minLength={6} />
+              </button>
+              
+              {(mode === 'login' || mode === 'register') && (
+                <div className={styles.divider}>
+                  <span>OR CONTINUE WITH</span>
+                </div>
+              )}
+
+              {(mode === 'login' || mode === 'register') && (
+                <button type="button" onClick={handleDemoLogin} className="btn-secondary" style={{ width: '100%', border: '1px dashed var(--primary-color)' }}>
+                  Launch Instant Demo
+                </button>
+              )}
+            </form>
+
+            <div className={styles.footer}>
+              <span>
+                {mode === 'login' && "New to Adrinix? "}
+                {mode === 'register' && "Already a member? "}
+                {(mode === 'forgot' || mode === 'reset') && "Go back to "}
+              </span>
+              <button 
+                className={styles.toggleMode}
+                onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess(''); }}
+              >
+                {mode === 'login' ? 'Create an account' : 'Log in instead'}
+              </button>
             </div>
-          )}
-
-          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }} disabled={isLoading}>
-            {isLoading ? 'Processing...' : (
-              mode === 'login' ? 'Secure Login' :
-              mode === 'register' ? 'Register Account' :
-              mode === 'forgot' ? 'Send Recovery Link' :
-              'Save New Password'
-            )}
-          </button>
-          
-          {(mode === 'login' || mode === 'register') && (
-            <button type="button" onClick={handleDemoLogin} className="btn-secondary" style={{ width: '100%' }}>
-              UI Preview (No Database)
-            </button>
-          )}
-        </form>
-
-        <div style={{ textAlign: 'center', marginTop: '25px', fontSize: '14px' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            {mode === 'login' && "Don't have an account? "}
-            {mode === 'register' && "Already have an account? "}
-            {(mode === 'forgot' || mode === 'reset') && "Ready to return? "}
-          </span>
-          <button 
-            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setSuccess(''); }}
-            style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600, padding: 0 }}
-          >
-            {mode === 'login' ? 'Sign up' : 'Log in'}
-          </button>
+          </div>
         </div>
       </div>
     </div>

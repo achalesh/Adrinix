@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { AdrinixLogo } from './Logo';
 import styles from './Sidebar.module.css';
 
 export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ isOpen, onClose }) => {
@@ -140,7 +141,7 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
       </nav>
 
       <div className={styles.brandBottom}>
-        <img src="/logo.png" alt="Adrinix Logo" className={styles.brandLogo} />
+        <AdrinixLogo size={32} />
         <div className={styles.brandTextContainer}>
           <span className={styles.brandText}>ADRINIX</span>
           <span className={styles.brandTagline}>SMART BILLING . ANYWHERE .</span>
