@@ -87,8 +87,12 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
             if (!in_array($status, ['Draft','Sent','Paid','Overdue'])) {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid status']); exit;
             }
-            $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET status=? WHERE id=? AND user_id=?");
-            $stmt->bind_param("sii", $status, $id, $user_id);
+            
+            $pay_method = $data['payment_method'] ?? null;
+            $pay_date = $data['payment_date'] ?? null;
+
+            $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET status=?, payment_method=?, payment_date=? WHERE id=? AND user_id=?");
+            $stmt->bind_param("sssii", $status, $pay_method, $pay_date, $id, $user_id);
             $stmt->execute(); $stmt->close();
             echo json_encode(['status' => 'success', 'message' => 'Status updated']);
             exit;

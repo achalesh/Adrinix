@@ -10,6 +10,7 @@ import type { Product } from './Products';
 import { API_BASE } from '../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { InvoicePreview } from '../components/InvoicePreview';
+import { PaymentReceiptPDF } from '../components/PaymentReceiptPDF';
 import styles from './InvoiceEditor.module.css';
 
 interface InvoiceItem {
@@ -48,6 +49,8 @@ export const InvoiceEditor = () => {
     next_generation_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     auto_send: false,
     public_token: '',
+    payment_method: '',
+    payment_date: '',
   });
 
   const [showAdvancedDesign, setShowAdvancedDesign] = useState(false);
@@ -97,6 +100,15 @@ export const InvoiceEditor = () => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailData, setEmailData] = useState({ to: '', subject: '', body: '' });
 
+  // Payment Record Modal
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState({
+    method: 'Bank Transfer',
+    date: new Date().toISOString().split('T')[0],
+    sendReceipt: true
+  });
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+
   const openEmailModal = () => {
     const defaultSubject = `Invoice ${invoiceMeta.invoice_number} from ${useSettingsStore.getState().company.name || 'Adrinix'}`;
     const defaultBody = `Hello ${client.name || 'valued client'},\n\nPlease find attached invoice ${invoiceMeta.invoice_number} for your recent purchase.\n\nTotal Due: ${formatCurrency(grandTotal, localization.locale, localization.currencyCode)}\nDue Date: ${invoiceMeta.due_date}\n\nThank you for your business!`;
@@ -136,10 +148,12 @@ export const InvoiceEditor = () => {
             status: inv.status ?? 'Draft',
             template: inv.template ?? 'minimal',
             is_recurring: Boolean(Number(inv.is_recurring)),
-            recurrence_period: inv.recurrence_period ?? 'monthly',
-            next_generation_date: inv.next_generation_date?.split('T')[0] ?? inv.next_generation_date ?? '',
+            recurrence_period: inv.recurrence_period || 'none',
+            next_generation_date: inv.next_generation_date || '',
             auto_send: Boolean(Number(inv.auto_send)),
-            public_token: inv.public_token ?? '',
+            public_token: inv.public_token || '',
+            payment_method: inv.payment_method || '',
+            payment_date: inv.payment_date || '',
           });
           setClient({
             name: inv.client_name ?? '',
@@ -297,7 +311,7 @@ export const InvoiceEditor = () => {
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const updateInvoiceStatus = async (newStatus: string) => {
+  const updateInvoiceStatus = async (newStatus: string, details?: any) => {
     // Only upgrade from Draft to Sent automatically
     if (newStatus === 'Sent' && (invoiceMeta.status !== 'Draft' && invoiceMeta.status !== '')) return;
     
@@ -312,19 +326,99 @@ export const InvoiceEditor = () => {
     if (!currentId || currentId === 'new') return;
 
     try {
+      const payload: any = { action: 'update_status', id: Number(currentId), status: newStatus };
+      if (details) {
+        payload.payment_method = details.method;
+        payload.payment_date = details.date;
+      }
+
       const res = await authFetch(API_INVOICES, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_status', id: Number(currentId), status: newStatus })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.status === 'success') {
-        setInvoiceMeta(prev => ({ ...prev, status: newStatus }));
+        setInvoiceMeta(prev => ({ 
+          ...prev, 
+          status: newStatus,
+          payment_method: details?.method || prev.payment_method,
+          payment_date: details?.date || prev.payment_date
+        }));
         showToast(`Invoice marked as ${newStatus}`, 'success');
+        return true;
       }
     } catch (err) {
       console.error('Failed to update status:', err);
       showToast('Failed to update status', 'error');
+    }
+    return false;
+  };
+
+  const handleRecordPaymentFinal = async () => {
+    setIsRecordingPayment(true);
+    try {
+      const success = await updateInvoiceStatus('Paid', paymentDetails);
+      
+      if (success && paymentDetails.sendReceipt) {
+        showToast('Status updated. Generating and sending receipt...', 'info');
+        
+        // 1. Generate Receipt PDF
+        const fullStoreState = useSettingsStore.getState();
+        const cleanSettings = {
+          company: fullStoreState.company,
+          localization: fullStoreState.localization,
+          taxProfiles: fullStoreState.taxProfiles
+        };
+
+        const pdfBlob = await pdf(
+          <PaymentReceiptPDF
+            settings={cleanSettings as any}
+            invoiceMeta={invoiceMeta}
+            client={client}
+            items={items}
+            subtotal={subtotal}
+            taxBreakdown={taxBreakdown}
+            grandTotal={grandTotal}
+            paymentDetails={paymentDetails}
+          />
+        ).toBlob();
+
+        // 2. Convert to Base64
+        const reader = new FileReader();
+        const pdfBase64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(pdfBlob);
+        });
+        const pdfBase64 = await pdfBase64Promise;
+
+        // 3. Send via API
+        const mailRes = await authFetch(API_MAIL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: client.email,
+            subject: `Payment Receipt: Invoice #${invoiceMeta.invoice_number}`,
+            body: `Hello ${client.name},\n\nThank you for your payment. Please find the receipt for Invoice #${invoiceMeta.invoice_number} attached.\n\nBest regards,\n${cleanSettings.company.name}`,
+            pdf_base64: pdfBase64,
+            filename: `Receipt_${invoiceMeta.invoice_number}.pdf`
+          })
+        });
+        
+        const mailData = await mailRes.json();
+        if (mailData.status === 'success') {
+          showToast('Receipt sent to client!', 'success');
+        } else {
+          showToast('Payment recorded, but receipt failed: ' + mailData.message, 'warning');
+        }
+      }
+      
+      setPaymentModalOpen(false);
+    } catch (err) {
+      console.error('Record payment failed:', err);
+      showToast('Failed to record payment fully.', 'error');
+    } finally {
+      setIsRecordingPayment(false);
     }
   };
 
@@ -900,9 +994,9 @@ export const InvoiceEditor = () => {
             <button 
               className="btn-primary" 
               style={{ width: '100%', height: 48, background: 'var(--success-color)', border: 'none' }} 
-              onClick={() => updateInvoiceStatus('Paid')}
+              onClick={() => setPaymentModalOpen(true)}
             >
-              <CheckCircle size={18} /> Mark as Paid
+              <CheckCircle size={18} /> Record Payment
             </button>
           )}
 
@@ -1106,6 +1200,73 @@ export const InvoiceEditor = () => {
         </div>
       </div>
     )}
-  </div>
+
+      {/* Record Payment Modal */}
+      {paymentModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => !isRecordingPayment && setPaymentModalOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()} style={{ maxWidth: 450 }}>
+            <div className={styles.modalHeader}>
+              <h3>Record Payment</h3>
+              <button className={styles.closeBtn} onClick={() => setPaymentModalOpen(false)}><X size={20} /></button>
+            </div>
+            <div style={{ padding: 25 }}>
+              <div className="form-group">
+                <label>Payment Method</label>
+                <select 
+                  className="input-field" 
+                  value={paymentDetails.method}
+                  onChange={e => setPaymentDetails({...paymentDetails, method: e.target.value})}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Online Payment">Online Payment (Card/UPI)</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Payment Date</label>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  value={paymentDetails.date}
+                  onChange={e => setPaymentDetails({...paymentDetails, date: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={paymentDetails.sendReceipt}
+                    onChange={e => setPaymentDetails({...paymentDetails, sendReceipt: e.target.checked})}
+                    style={{ width: 18, height: 18, accentColor: 'var(--primary-color)' }}
+                  />
+                  <span>Send payment receipt to customer</span>
+                </label>
+              </div>
+              
+              <div style={{ marginTop: 30, display: 'flex', gap: 12 }}>
+                <button 
+                  className="btn-secondary" 
+                  style={{ flex: 1 }} 
+                  onClick={() => setPaymentModalOpen(false)}
+                  disabled={isRecordingPayment}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 2, background: 'var(--success-color)', border: 'none' }}
+                  onClick={handleRecordPaymentFinal}
+                  disabled={isRecordingPayment}
+                >
+                  {isRecordingPayment ? 'Recording...' : 'Record & Complete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
 );
 };
