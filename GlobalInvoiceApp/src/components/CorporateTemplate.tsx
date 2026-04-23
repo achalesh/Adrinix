@@ -38,7 +38,7 @@ export const CorporateTemplate: React.FC<TemplateProps> = ({
             )}
           </div>
           <div className={styles.invoiceHeader}>
-            <h1>INVOICE</h1>
+            <h1>{(invoiceMeta.type || 'Invoice').toUpperCase()}</h1>
             <p>#{invoiceMeta.invoice_number}</p>
           </div>
         </div>

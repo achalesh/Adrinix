@@ -37,7 +37,7 @@ export const MinimalTemplate: React.FC<TemplateProps> = ({
           </div>
         </div>
         <div className={styles.invoiceMeta}>
-          <h1 className={styles.invoiceTitle}>Invoice</h1>
+          <h1 className={styles.invoiceTitle}>{invoiceMeta.type || 'Invoice'}</h1>
           <div className={styles.metaRow}>
             <span>No.</span>
             <span>{invoiceMeta.invoice_number}</span>

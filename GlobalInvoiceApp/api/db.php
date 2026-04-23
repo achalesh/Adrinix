@@ -104,7 +104,9 @@ function ensureTenantSchema($conn, $company_id)
         'auto_send' => "TINYINT(1) DEFAULT 0",
         'public_token' => "VARCHAR(64) UNIQUE",
         'payment_method' => "VARCHAR(50) DEFAULT NULL",
-        'payment_date' => "DATE DEFAULT NULL"
+        'payment_date' => "DATE DEFAULT NULL",
+        'type' => "ENUM('Invoice', 'Quotation') DEFAULT 'Invoice'",
+        'client_notes' => "TEXT DEFAULT NULL"
     ];
 
     foreach ($required_columns as $col => $definition) {

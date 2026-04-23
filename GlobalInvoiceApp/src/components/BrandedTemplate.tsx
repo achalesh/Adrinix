@@ -36,11 +36,11 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
             {company.logo && <img src={company.logo} alt="Logo" className={styles.logo} />}
             <div className={styles.brandText}>
               <h1 className={styles.companyName}>{company.name}</h1>
-              <p className={styles.tagline}>Invoice Statement</p>
+              <p className={styles.tagline}>{invoiceMeta.type === 'Quotation' ? 'Quotation Statement' : 'Invoice Statement'}</p>
             </div>
           </div>
           <div className={styles.invoiceBadge}>
-            <span className={styles.badgeLabel}>Amount Due</span>
+            <span className={styles.badgeLabel}>{invoiceMeta.type === 'Quotation' ? 'Quote Total' : 'Amount Due'}</span>
             <h2 className={styles.badgeAmount}>{formatCurrency(grandTotal, loc, cur)}</h2>
           </div>
         </header>
@@ -67,7 +67,7 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
             <span className={styles.label}>Details</span>
             <div className={styles.infoCard}>
               <div className={styles.metaRow}>
-                <span>Invoice #</span>
+                <span>{invoiceMeta.type === 'Quotation' ? 'Quote #' : 'Invoice #'}</span>
                 <span className={styles.bold}>{invoiceMeta.invoice_number}</span>
               </div>
               <div className={styles.metaRow}>

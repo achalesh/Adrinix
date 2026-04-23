@@ -73,4 +73,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     ]);
     exit;
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    $company_id = (int)($data['company_id'] ?? 0);
+    $action = $data['action'] ?? '';
+    $notes = $data['notes'] ?? '';
+
+    if (!$token || !$company_id || !$action) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid portal action']);
+        exit;
+    }
+
+    $prefix = "c" . $company_id . "_";
+    $invoicesTable = $prefix . "invoices";
+
+    if ($action === 'approve') {
+        // Convert Quotation to Invoice and set status to Sent (awaiting payment)
+        $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET type = 'Invoice', status = 'Sent', client_notes = NULL WHERE public_token = ?");
+        $stmt->bind_param("s", $token);
+        if ($stmt->execute()) {
+             echo json_encode(['status' => 'success', 'message' => 'Quotation approved! Your official invoice is now ready.']);
+        } else {
+             echo json_encode(['status' => 'error', 'message' => 'Failed to process approval']);
+        }
+    } elseif ($action === 'suggest_changes') {
+        // Record client feedback and reset to Draft for workspace owner to review
+        $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET client_notes = ?, status = 'Draft' WHERE public_token = ?");
+        $stmt->bind_param("ss", $notes, $token);
+        if ($stmt->execute()) {
+             echo json_encode(['status' => 'success', 'message' => 'Thank you. Your feedback has been sent to our team.']);
+        } else {
+             echo json_encode(['status' => 'error', 'message' => 'Failed to submit feedback']);
+        }
+    }
+    exit;
+}
 ?>

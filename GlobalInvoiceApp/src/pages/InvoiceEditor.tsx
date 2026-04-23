@@ -51,6 +51,8 @@ export const InvoiceEditor = () => {
     public_token: '',
     payment_method: '',
     payment_date: '',
+    type: 'Invoice' as 'Invoice' | 'Quotation',
+    client_notes: '',
   });
 
   const [showAdvancedDesign, setShowAdvancedDesign] = useState(false);
@@ -771,6 +773,38 @@ export const InvoiceEditor = () => {
           <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
             Note: This overrides the default "{useSettingsStore.getState().company.defaultTemplate}" template for this specific invoice only.
           </p>
+        </div>
+      )}
+
+      {/* Document Type Selector */}
+      <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px' }}>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Document Type</span>
+        {(['Invoice', 'Quotation'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setInvoiceMeta({ ...invoiceMeta, type: t })}
+            style={{
+              padding: '6px 18px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+              border: '1px solid',
+              cursor: 'pointer', transition: 'all 0.15s',
+              background: invoiceMeta.type === t ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+              color: invoiceMeta.type === t ? 'var(--primary-color)' : 'var(--text-secondary)',
+              borderColor: invoiceMeta.type === t ? 'var(--primary-color)' : 'var(--panel-border)',
+            }}
+          >{t}</button>
+        ))}
+      </div>
+
+      {/* Show Client Feedback if any */}
+      {invoiceMeta.client_notes && (
+        <div className="glass-panel" style={{ border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.05)' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <MessageCircle size={18} style={{ color: '#f59e0b', marginTop: 2 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>Client Suggested Changes</div>
+              <div style={{ fontSize: 13, opacity: 0.9 }}>{invoiceMeta.client_notes}</div>
+            </div>
+          </div>
         </div>
       )}
 
