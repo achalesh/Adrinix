@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, MessageCircle, Settings as SettingsIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, MessageCircle, Settings as SettingsIcon, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -649,73 +649,7 @@ export const InvoiceEditor = () => {
         </div>
       </div>
 
-      {/* Recurring Settings */}
-      <div className={`glass-panel ${invoiceMeta.is_recurring ? styles.recurringActive : ''}`} style={{ transition: 'all 0.3s' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: invoiceMeta.is_recurring ? 15 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ 
-              width: 40, height: 40, borderRadius: 10, background: invoiceMeta.is_recurring ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: invoiceMeta.is_recurring ? 'var(--primary-color)' : 'var(--text-secondary)',
-              transition: 'all 0.3s'
-            }}>
-              <SettingsIcon size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Recurring Invoice</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Auto-generate this invoice on a schedule</div>
-            </div>
-          </div>
-          <label className={styles.switch}>
-            <input 
-              type="checkbox" 
-              checked={invoiceMeta.is_recurring} 
-              onChange={e => setInvoiceMeta({...invoiceMeta, is_recurring: e.target.checked})} 
-            />
-            <span className={styles.slider}></span>
-          </label>
-        </div>
 
-        {invoiceMeta.is_recurring && (
-          <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--panel-border)' }}>
-            <div className="form-group">
-              <label>Frequency</label>
-              <select 
-                className="input-field" 
-                value={invoiceMeta.recurrence_period} 
-                onChange={e => setInvoiceMeta({...invoiceMeta, recurrence_period: e.target.value as any})}
-              >
-                <option value="weekly">Weekly</option>
-                <option value="bi-weekly">Bi-weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Next Generation Date</label>
-              <input 
-                type="date" 
-                className="input-field" 
-                value={invoiceMeta.next_generation_date} 
-                onChange={e => setInvoiceMeta({...invoiceMeta, next_generation_date: e.target.value})} 
-              />
-            </div>
-            <div className="form-group">
-              <label>Auto-Send to Client</label>
-              <div style={{ height: 42, display: 'flex', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, userSelect: 'none' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={invoiceMeta.auto_send} 
-                    onChange={e => setInvoiceMeta({...invoiceMeta, auto_send: e.target.checked})} 
-                    style={{ width: 18, height: 18, accentColor: 'var(--primary-color)' }}
-                  />
-                  Automatically email client
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Client Input */}
       <div className="glass-panel clientSection">
@@ -850,6 +784,62 @@ export const InvoiceEditor = () => {
 
       {/* Persistent Totals Box */}
       <aside className={styles.totalsBox}>
+        {/* Recurring Settings Moved Here */}
+        <div className={styles.sidebarSection} style={{ marginBottom: 25, borderBottom: '1px solid var(--panel-border)', paddingBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: invoiceMeta.is_recurring ? 15 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <RefreshCw size={18} className={invoiceMeta.is_recurring ? 'animate-spin-slow' : ''} style={{ color: invoiceMeta.is_recurring ? 'var(--primary-color)' : 'var(--text-secondary)' }} />
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Recurring Invoice</span>
+            </div>
+            <label className={styles.switch}>
+              <input 
+                type="checkbox" 
+                checked={invoiceMeta.is_recurring} 
+                onChange={e => setInvoiceMeta({...invoiceMeta, is_recurring: e.target.checked})} 
+              />
+              <span className={styles.slider}></span>
+            </label>
+          </div>
+
+          {invoiceMeta.is_recurring && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 15, marginTop: 15 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontSize: 11 }}>Frequency</label>
+                <select 
+                  className="input-field" 
+                  style={{ height: 38, fontSize: 13 }}
+                  value={invoiceMeta.recurrence_period} 
+                  onChange={e => setInvoiceMeta({...invoiceMeta, recurrence_period: e.target.value as any})}
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="bi-weekly">Bi-weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontSize: 11 }}>Next Generation</label>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  style={{ height: 38, fontSize: 13 }}
+                  value={invoiceMeta.next_generation_date} 
+                  onChange={e => setInvoiceMeta({...invoiceMeta, next_generation_date: e.target.value})} 
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 12, userSelect: 'none' }}>
+                <input 
+                  type="checkbox" 
+                  checked={invoiceMeta.auto_send} 
+                  onChange={e => setInvoiceMeta({...invoiceMeta, auto_send: e.target.checked})} 
+                  style={{ width: 16, height: 16, accentColor: 'var(--primary-color)' }}
+                />
+                Auto-email client
+              </label>
+            </div>
+          )}
+        </div>
+
         <h3 style={{ fontSize: 16, marginBottom: 15, color: 'var(--text-primary)' }}>Invoice Summary</h3>
         <div className={styles.totalRow}>
           <span>Subtotal</span>
