@@ -11,20 +11,30 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
     $itemsTable = t('invoice_items');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $stmt = $conn->prepare("
+        $query = "
             SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total, i.is_recurring, i.public_token,
                    c.name AS client_name
             FROM `{$invoicesTable}` i
             LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
-            WHERE i.user_id = ? ORDER BY i.created_at DESC
-        ");
-        $stmt->bind_param("i", $user_id);
+            WHERE 1=1 ORDER BY i.created_at DESC
+        ";
+        $stmt = $conn->prepare($query);
+        // No bind_param needed for 1=1
         $stmt->execute();
         $result = $stmt->get_result();
         $invoices = [];
         while ($row = $result->fetch_assoc()) { $invoices[] = $row; }
         $stmt->close();
-        echo json_encode(['status' => 'success', 'data' => $invoices]);
+        echo json_encode([
+            'status' => 'success', 
+            'data' => $invoices,
+            'debug' => [
+                'user_id' => $user_id,
+                'prefix' => $t_prefix,
+                'count' => count($invoices),
+                'query' => str_replace(["\n", "  "], " ", $query)
+            ]
+        ]);
         exit;
     }
 

@@ -1,7 +1,7 @@
 <?php
 // api/db.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 /**
@@ -175,6 +175,7 @@ function requireCompany($user_id)
     }
 
     $t_prefix = "c" . $company_id . "_";
+    header("X-Tenant-Prefix: " . $t_prefix);
     ensureTenantSchema($conn, $company_id);
     return $company;
 }
