@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rt = $st->get_result()->fetch_assoc(); $st->close();
             $token = !empty($rt['public_token']) ? $rt['public_token'] : bin2hex(random_bytes(32));
 
-            $stmt->bind_param("sssssdddssissisiii",
+            $stmt->bind_param("sssssdddsisssisii",
                 $data['invoice_number'], $data['status'], $template,
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $auto_send = !empty($data['auto_send']) ? 1 : 0;
         $token = bin2hex(random_bytes(32));
 
-        $si->bind_param("iiisssssdddssisis",
+        $si->bind_param("iisssssdddsisssis",
             $user_id, $client_id, $data['invoice_number'], $status, $template,
             $data['issue_date'], $data['due_date'],
             $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
