@@ -379,7 +379,7 @@ export const Clients = () => {
                   ) : clientInvoices.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', fontSize: '13px', opacity: 0.5 }}>No invoices found for this client.</div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxH: '300px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
                       {clientInvoices.slice(0, 5).map(inv => (
                         <div key={inv.id} className={styles.historyItem} onClick={() => navigate(`/invoices/${inv.id}`)}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
