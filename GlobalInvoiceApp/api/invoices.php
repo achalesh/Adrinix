@@ -12,8 +12,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $query = "
-            SELECT i.id, i.invoice_number, i.status, i.template, i.issue_date, i.due_date, i.grand_total, i.is_recurring, i.public_token,
-                   c.name AS client_name
+            SELECT i.*, c.name AS client_name
             FROM `{$invoicesTable}` i
             LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
             WHERE 1=1 ORDER BY i.created_at DESC
