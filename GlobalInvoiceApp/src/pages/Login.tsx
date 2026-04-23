@@ -200,18 +200,6 @@ export const Login = () => {
                   'Update Password'
                 )}
               </button>
-              
-              {(mode === 'login' || mode === 'register') && (
-                <div className={styles.divider}>
-                  <span>OR CONTINUE WITH</span>
-                </div>
-              )}
-
-              {(mode === 'login' || mode === 'register') && (
-                <button type="button" onClick={handleDemoLogin} className="btn-secondary" style={{ width: '100%', border: '1px dashed var(--primary-color)' }}>
-                  Launch Instant Demo
-                </button>
-              )}
             </form>
 
             <div className={styles.footer}>
