@@ -18,6 +18,7 @@ interface Client {
   total_invoices: number;
   total_paid: number;
   total_pending: number;
+  created_at: string;
 }
 
 export const Clients = () => {
