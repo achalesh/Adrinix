@@ -97,31 +97,33 @@ function ensureTenantSchema($conn, $company_id)
         ;
     }
 
-    // ─── MIGRATION: Check for recurring columns in invoices ───
-    $res = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE 'is_recurring'");
-    if ($res->num_rows == 0) {
-        $conn->query("ALTER TABLE `{$prefix}invoices` 
-            ADD COLUMN is_recurring TINYINT(1) DEFAULT 0,
-            ADD COLUMN recurrence_period ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none',
-            ADD COLUMN next_generation_date DATE DEFAULT NULL,
-            ADD COLUMN last_generated_date DATE DEFAULT NULL,
-            ADD COLUMN recurrence_status ENUM('active', 'paused', 'completed') DEFAULT 'active',
-            ADD COLUMN auto_send TINYINT(1) DEFAULT 0
-        ");
-    }
-    
-    // ─── MIGRATION: Check for public_token in invoices ───
-    try {
-        $res = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE 'public_token'");
-        if ($res->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}invoices` ADD COLUMN public_token VARCHAR(64) UNIQUE AFTER auto_send");
+    // ─── ROBUST MIGRATION: Ensure all columns exist ───
+    $required_columns = [
+        'is_recurring' => "TINYINT(1) DEFAULT 0 AFTER notes",
+        'recurrence_period' => "ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none' AFTER is_recurring",
+        'next_generation_date' => "DATE DEFAULT NULL AFTER recurrence_period",
+        'last_generated_date' => "DATE DEFAULT NULL AFTER next_generation_date",
+        'recurrence_status' => "ENUM('active', 'paused', 'completed') DEFAULT 'active' AFTER last_generated_date",
+        'auto_send' => "TINYINT(1) DEFAULT 0 AFTER recurrence_status",
+        'public_token' => "VARCHAR(64) UNIQUE AFTER auto_send"
+    ];
+
+    foreach ($required_columns as $col => $definition) {
+        try {
+            $check = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE '$col'");
+            if ($check->num_rows == 0) {
+                $conn->query("ALTER TABLE `{$prefix}invoices` ADD COLUMN $col $definition");
+            }
+        } catch (Exception $e) {
+            error_log("Migration column $col failed: " . $e->getMessage());
         }
-        
-        // Patch any missing tokens immediately - wrapped in try to prevent crash
+    }
+
+    // Patch any missing tokens immediately
+    try {
         $conn->query("UPDATE `{$prefix}invoices` SET public_token = MD5(CONCAT(id, RAND())) WHERE public_token IS NULL OR public_token = ''");
     } catch (Exception $e) {
-        // Silently continue if migration fails, to keep the dashboard alive
-        error_log("Migration error: " . $e->getMessage());
+        error_log("Token patch failed: " . $e->getMessage());
     }
 }
 
