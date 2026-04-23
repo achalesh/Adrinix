@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, MessageCircle, Settings as SettingsIcon, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Save, Send, User, Download, BookOpen, Search, X, ArrowLeft, ExternalLink, Share2, MessageCircle, Settings as SettingsIcon, ChevronDown, ChevronUp, RefreshCw, CheckCircle } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore, authFetch } from '../store/useAuthStore';
@@ -299,7 +299,7 @@ export const InvoiceEditor = () => {
 
   const updateInvoiceStatus = async (newStatus: string) => {
     // Only upgrade from Draft to Sent automatically
-    if (invoiceMeta.status !== 'Draft' && invoiceMeta.status !== '') return;
+    if (newStatus === 'Sent' && (invoiceMeta.status !== 'Draft' && invoiceMeta.status !== '')) return;
     
     // Check for ID - either from params or from the URL (if just navigated)
     let currentId = invoiceId;
@@ -320,9 +320,11 @@ export const InvoiceEditor = () => {
       const data = await res.json();
       if (data.status === 'success') {
         setInvoiceMeta(prev => ({ ...prev, status: newStatus }));
+        showToast(`Invoice marked as ${newStatus}`, 'success');
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+      showToast('Failed to update status', 'error');
     }
   };
 
@@ -894,6 +896,16 @@ export const InvoiceEditor = () => {
         </div>
 
         <div style={{ marginTop: 25, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {isEditMode && invoiceMeta.status !== 'Paid' && (
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', height: 48, background: 'var(--success-color)', border: 'none' }} 
+              onClick={() => updateInvoiceStatus('Paid')}
+            >
+              <CheckCircle size={18} /> Mark as Paid
+            </button>
+          )}
+
           <button className="btn-primary" style={{ width: '100%', height: 48 }} onClick={handleSaveInvoice} disabled={isSaving}>
             <Save size={18} /> {isSaving ? 'Saving...' : isEditMode ? 'Update Invoice' : 'Save Draft'}
           </button>

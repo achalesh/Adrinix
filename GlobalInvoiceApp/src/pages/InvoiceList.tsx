@@ -85,8 +85,8 @@ export const InvoiceList: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (id: number, status: string, e: React.ChangeEvent<HTMLSelectElement>) => {
-    e.stopPropagation();
+  const handleStatusChange = async (id: number, status: string, e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
     try {
       await authFetch(`${API_BASE}/invoices.php`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -260,6 +260,18 @@ export const InvoiceList: React.FC = () => {
                       </td>
                       <td onClick={e => e.stopPropagation()}>
                         <div className={styles.rowActions}>
+                          {inv.status !== 'Paid' && (
+                            <button
+                              className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
+                              title="Mark as Paid"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(inv.id, 'Paid', e);
+                              }}
+                            >
+                              <CheckCircle size={14} />
+                            </button>
+                          )}
                           <button
                             className={styles.iconBtn}
                             title="Edit Invoice"

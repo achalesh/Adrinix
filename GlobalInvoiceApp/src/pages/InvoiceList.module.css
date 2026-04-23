@@ -112,6 +112,15 @@
   border-color: #25d366 !important;
 }
 
+.iconBtnSuccess {
+  color: #10b981 !important;
+}
+
+.iconBtnSuccess:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: #10b981 !important;
+}
+
 .iconBtnDanger:hover { background: rgba(239,68,68,0.12); border-color: #ef4444; color: #ef4444; }
 
 /* Status dropdown in table */
