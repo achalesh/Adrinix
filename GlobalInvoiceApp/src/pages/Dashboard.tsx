@@ -23,6 +23,7 @@ interface DashStats {
   overdue_count: number;
   sent_count: number;
   total_clients: number;
+  quotation_count: number;
 }
 
 interface RecentInvoice {
@@ -33,6 +34,7 @@ interface RecentInvoice {
   issue_date: string;
   due_date: string;
   grand_total: number;
+  type: 'Invoice' | 'Quotation';
 }
 
 interface MonthlyRevenue {
@@ -182,20 +184,20 @@ export const Dashboard: React.FC = () => {
           accent: '#10b981',
         },
         {
-          label: 'Awaiting Payment',
-          value: fmtCurrency((stats.draft_revenue || 0) + (stats.overdue_revenue || 0) + (stats.sent_revenue || 0), currCode),
-          sub: `${(stats.draft_count || 0) + (stats.overdue_count || 0) + (stats.sent_count || 0)} open invoices`,
+          label: 'Quotations',
+          value: stats.quotation_count || 0,
+          sub: 'Active proposals',
+          subClass: styles.statSubAmber,
+          icon: FileText,
+          accent: '#818cf8',
+        },
+        {
+          label: 'Awaiting',
+          value: fmtCurrency((stats.overdue_revenue || 0) + (stats.sent_revenue || 0), currCode),
+          sub: `${(stats.overdue_count || 0) + (stats.sent_count || 0)} open invoices`,
           subClass: styles.statSubAmber,
           icon: Clock,
           accent: '#f59e0b',
-        },
-        {
-          label: 'Scheduled',
-          value: stats.total_invoices > 0 ? 'Active' : 'None',
-          sub: 'Recurring invoices enabled',
-          subClass: styles.statSubGreen,
-          icon: Clock,
-          accent: '#818cf8',
         },
       ]
     : [];
@@ -320,7 +322,14 @@ export const Dashboard: React.FC = () => {
                   )
                   : recent.map(inv => (
                     <tr key={inv.id}>
-                      <td><span className={styles.invNumber}>{inv.invoice_number}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span className={styles.invNumber}>{inv.invoice_number}</span>
+                          <span style={{ fontSize: '9px', textTransform: 'uppercase', color: inv.type === 'Quotation' ? '#818cf8' : 'var(--text-secondary)', opacity: 0.8 }}>
+                            {inv.type || 'Invoice'}
+                          </span>
+                        </div>
+                      </td>
                       <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
                       <td><span className={styles.invDate}>{fmtDate(inv.issue_date)}</span></td>
                       <td><span className={styles.amount}>{fmtCurrency(inv.grand_total, currCode)}</span></td>

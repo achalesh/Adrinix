@@ -27,16 +27,17 @@ $clientsTable = t('clients');
 // --- 1. Invoice Stats ---
 $stmt = $conn->prepare("
     SELECT 
-        COUNT(*) AS total_invoices,
-        COALESCE(SUM(grand_total), 0) AS total_revenue,
-        COALESCE(SUM(CASE WHEN status = 'Paid' THEN grand_total ELSE 0 END), 0) AS paid_revenue,
-        COALESCE(SUM(CASE WHEN status = 'Draft' THEN grand_total ELSE 0 END), 0) AS draft_revenue,
-        COALESCE(SUM(CASE WHEN status = 'Overdue' THEN grand_total ELSE 0 END), 0) AS overdue_revenue,
-        COALESCE(SUM(CASE WHEN status = 'Sent' THEN grand_total ELSE 0 END), 0) AS sent_revenue,
-        COUNT(CASE WHEN status = 'Paid' THEN 1 END) AS paid_count,
-        COUNT(CASE WHEN status = 'Draft' THEN 1 END) AS draft_count,
-        COUNT(CASE WHEN status = 'Overdue' THEN 1 END) AS overdue_count,
-        COUNT(CASE WHEN status = 'Sent' THEN 1 END) AS sent_count
+        COUNT(CASE WHEN type = 'Invoice' OR type IS NULL THEN 1 END) AS total_invoices,
+        COALESCE(SUM(CASE WHEN type = 'Invoice' OR type IS NULL THEN grand_total ELSE 0 END), 0) AS total_revenue,
+        COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Paid' THEN grand_total ELSE 0 END), 0) AS paid_revenue,
+        COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Draft' THEN grand_total ELSE 0 END), 0) AS draft_revenue,
+        COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Overdue' THEN grand_total ELSE 0 END), 0) AS overdue_revenue,
+        COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Sent' THEN grand_total ELSE 0 END), 0) AS sent_revenue,
+        COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Paid' THEN 1 END) AS paid_count,
+        COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Draft' THEN 1 END) AS draft_count,
+        COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Overdue' THEN 1 END) AS overdue_count,
+        COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Sent' THEN 1 END) AS sent_count,
+        COUNT(CASE WHEN type = 'Quotation' THEN 1 END) AS quotation_count
     FROM `{$invoicesTable}`
     WHERE user_id = ?
 ");
@@ -59,7 +60,7 @@ $stmt2->close();
 
 // --- 3. Recent 5 Invoices with client name ---
 $stmt3 = $conn->prepare("
-    SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.grand_total,
+    SELECT i.id, i.invoice_number, i.status, i.issue_date, i.due_date, i.grand_total, i.type,
            c.name AS client_name
     FROM `{$invoicesTable}` i
     LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id

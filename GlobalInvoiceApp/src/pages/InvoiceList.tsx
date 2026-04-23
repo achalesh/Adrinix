@@ -22,9 +22,11 @@ interface Invoice {
   grand_total: number;
   is_recurring: number | boolean;
   public_token?: string;
+  type: 'Invoice' | 'Quotation';
 }
 
 const STATUS_LIST = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Recurring'] as const;
+const TYPE_LIST = ['All Documents', 'Invoices', 'Quotations'] as const;
 
 function Badge({ status }: { status: string }) {
   const cls = {
@@ -33,6 +35,20 @@ function Badge({ status }: { status: string }) {
   }[status] ?? styles.badgeDraft;
   const Icon = { Paid: CheckCircle, Draft: Clock, Overdue: AlertCircle, Sent: Send }[status] ?? Clock;
   return <span className={`${styles.badge} ${cls}`}><Icon size={9} />{status}</span>;
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const isQuote = type === 'Quotation';
+  return (
+    <span style={{ 
+      fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
+      background: isQuote ? 'rgba(99,102,241,0.1)' : 'rgba(16,185,129,0.1)',
+      color: isQuote ? '#818cf8' : '#10b981',
+      textTransform: 'uppercase', letterSpacing: '0.05em', border: '1px solid currentColor'
+    }}>
+      {type}
+    </span>
+  );
 }
 
 function fmtDate(d: string) {
@@ -49,14 +65,19 @@ export const InvoiceList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All Documents');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const filter = params.get('filter');
+    const type = params.get('type');
     const clientName = params.get('client');
     
     if (filter && STATUS_LIST.includes(filter as any)) {
       setStatusFilter(filter);
+    }
+    if (type && TYPE_LIST.includes(type as any)) {
+      setTypeFilter(type);
     }
     if (clientName) {
       setSearch(clientName);
@@ -183,8 +204,13 @@ export const InvoiceList: React.FC = () => {
       : statusFilter === 'Recurring' 
         ? Boolean(Number(inv.is_recurring)) 
         : inv.status === statusFilter;
-    return matchSearch && matchStatus;
-  }), [invoices, search, statusFilter]);
+    const matchType = typeFilter === 'All Documents'
+      ? true
+      : typeFilter === 'Invoices'
+        ? inv.type === 'Invoice'
+        : inv.type === 'Quotation';
+    return matchSearch && matchStatus && matchType;
+  }), [invoices, search, statusFilter, typeFilter]);
 
   // Stats totals
   const totalRevenue  = invoices.reduce((s, i) => s + Number(i.grand_total), 0);
@@ -230,13 +256,31 @@ export const InvoiceList: React.FC = () => {
         ))}
       </div>
 
+      {/* Document Type Tabs */}
+      <div style={{ display: 'flex', gap: 20, marginBottom: 25, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 0 }}>
+        {TYPE_LIST.map(t => (
+          <button
+            key={t}
+            onClick={() => setTypeFilter(t)}
+            style={{
+              background: 'none', border: 'none', padding: '12px 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              color: typeFilter === t ? 'var(--primary-color)' : 'rgba(255,255,255,0.4)',
+              borderBottom: typeFilter === t ? '2px solid var(--primary-color)' : '2px solid transparent',
+              transition: 'all 0.2s ease', position: 'relative', top: 1
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <Search size={17} className={styles.searchIcon} />
           <input
             className={`input-field ${styles.searchInput}`}
-            placeholder="Search by invoice # or client..."
+            placeholder={`Search ${typeFilter === 'Quotations' ? 'quotations' : 'invoices'}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -258,6 +302,7 @@ export const InvoiceList: React.FC = () => {
           <thead>
             <tr>
               <th>#</th>
+              <th>Type</th>
               <th>Client</th>
               <th>Issue Date</th>
               <th>Due Date</th>
@@ -270,16 +315,16 @@ export const InvoiceList: React.FC = () => {
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j}><div style={{ height: 14, background: 'rgba(255,255,255,0.06)', borderRadius: 6 }} /></td>
                     ))}
                   </tr>
                 ))
               : filtered.length === 0
-                ? <tr><td colSpan={7} className={styles.emptyState}>
-                    {search || statusFilter !== 'All'
-                      ? 'No invoices match your filter.'
-                      : 'No invoices yet. Click "New Invoice" to create one.'}
+                ? <tr><td colSpan={8} className={styles.emptyState}>
+                    {search || statusFilter !== 'All' || typeFilter !== 'All Documents'
+                      ? `No ${typeFilter === 'Quotations' ? 'quotations' : 'documents'} match your filter.`
+                      : `No ${typeFilter === 'Quotations' ? 'quotations' : 'invoices'} yet. Click "New Invoice" to create one.`}
                   </td></tr>
                 : filtered.map(inv => (
                     <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)}>
@@ -293,6 +338,7 @@ export const InvoiceList: React.FC = () => {
                           )}
                         </div>
                       </td>
+                      <td><TypeBadge type={inv.type || 'Invoice'} /></td>
                       <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
                       <td><span className={styles.dateText}>{fmtDate(inv.issue_date)}</span></td>
                       <td><span className={styles.dateText}>{fmtDate(inv.due_date)}</span></td>
