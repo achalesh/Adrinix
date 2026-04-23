@@ -53,11 +53,16 @@ export const InvoiceList: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const filter = params.get('filter');
+    const clientName = params.get('client');
+    
     if (filter && STATUS_LIST.includes(filter as any)) {
       setStatusFilter(filter);
     }
+    if (clientName) {
+      setSearch(clientName);
+    }
     fetchInvoices();
-  }, [activeCompanyId]);
+  }, [activeCompanyId, window.location.search]);
 
   const fetchInvoices = async () => {
     setIsLoading(true);

@@ -115,9 +115,17 @@ function ensureTenantSchema($conn, $company_id)
             }
         } catch (Exception $e) {
             error_log("Migration column $col failed: " . $e->getMessage());
-            // If display_errors is ON, re-throw to see the error in the browser
-            if (ini_get('display_errors')) throw $e;
         }
+    }
+
+    // Client Table Migrations
+    try {
+        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}clients` LIKE 'tax_id'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}clients` ADD COLUMN tax_id VARCHAR(100) AFTER phone");
+        }
+    } catch (Exception $e) {
+        error_log("Client migration failed: " . $e->getMessage());
     }
 
     // Patch any missing tokens immediately

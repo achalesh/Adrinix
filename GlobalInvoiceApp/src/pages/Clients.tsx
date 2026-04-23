@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Edit2, Trash2, Mail, Phone, BookOpen, X, Search } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './Clients.module.css';
 
@@ -12,11 +15,16 @@ interface Client {
   phone: string;
   tax_id: string;
   billing_address: string;
+  total_invoices: number;
+  total_paid: number;
+  total_pending: number;
 }
 
 export const Clients = () => {
+  const navigate = useNavigate();
   const { activeCompanyId } = useAuthStore();
   const { showToast } = useToastStore();
+  const { localization } = useSettingsStore();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,6 +50,12 @@ export const Clients = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const stats = {
+    total: clients.length,
+    revenue: clients.reduce((sum, c) => sum + Number(c.total_paid || 0), 0),
+    pending: clients.reduce((sum, c) => sum + Number(c.total_pending || 0), 0)
   };
 
   const handleDelete = async (id: number) => {
@@ -96,6 +110,37 @@ export const Clients = () => {
         </button>
       </header>
 
+      {/* Stats Cards */}
+      <div className={styles.statsGrid}>
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div className={styles.statIcon} style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary-color)' }}>
+            <Users size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Total Clients</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{stats.total}</div>
+          </div>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div className={styles.statIcon} style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+            <BookOpen size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Total Revenue</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{formatCurrency(stats.revenue, localization.locale, localization.currencyCode)}</div>
+          </div>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div className={styles.statIcon} style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+            <Mail size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Outstanding</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{formatCurrency(stats.pending, localization.locale, localization.currencyCode)}</div>
+          </div>
+        </div>
+      </div>
+
       <div className={styles.searchBarContainer}>
         <Search size={20} className={styles.searchIcon} />
         <input 
@@ -115,7 +160,8 @@ export const Clients = () => {
             <thead>
               <tr>
                 <th>Contact Name</th>
-                <th>Contact Output</th>
+                <th>Contact Details</th>
+                <th>Financial Summary</th>
                 <th>Tax / Registration</th>
                 <th>Actions</th>
               </tr>
@@ -126,14 +172,26 @@ export const Clients = () => {
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div className={styles.avatarBox}><Users size={16} /></div>
-                      <span style={{ fontWeight: 600 }}>{client.name}</span>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{client.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Joined {new Date(client.created_at).toLocaleDateString()}</div>
+                      </div>
                     </div>
                   </td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                       {client.email && <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={12} /> {client.email}</span>}
                       {client.phone && <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={12} /> {client.phone}</span>}
-                      {(!client.email && !client.phone) && <span style={{ opacity: 0.5 }}>No contact details</span>}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#10b981' }}>
+                        {formatCurrency(Number(client.total_paid), localization.locale, localization.currencyCode)} Paid
+                      </div>
+                      <div style={{ fontSize: '12px', color: Number(client.total_pending) > 0 ? '#ef4444' : 'var(--text-secondary)' }}>
+                        {formatCurrency(Number(client.total_pending), localization.locale, localization.currencyCode)} Pending
+                      </div>
                     </div>
                   </td>
                   <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
@@ -141,6 +199,14 @@ export const Clients = () => {
                   </td>
                   <td>
                     <div className={styles.actionButtons}>
+                      <button 
+                        className={styles.iconBtn} 
+                        onClick={() => navigate(`/invoices?client=${client.name}`)} 
+                        title="View Client Invoices"
+                        style={{ color: 'var(--primary-color)' }}
+                      >
+                        <BookOpen size={16} />
+                      </button>
                       <button className={styles.iconBtn} onClick={() => { setEditingClient(client); setIsModalOpen(true); }} title="Edit Client">
                         <Edit2 size={16} />
                       </button>
@@ -153,7 +219,7 @@ export const Clients = () => {
               ))}
               {filteredClients.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     {searchQuery ? "No clients match your search." : "No clients found. Click 'New Client' to add your first record."}
                   </td>
                 </tr>
