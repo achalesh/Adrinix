@@ -422,6 +422,43 @@ export const InvoiceEditor = () => {
     }
   };
 
+  const handleDownloadReceipt = async () => {
+    try {
+      const fullStoreState = useSettingsStore.getState();
+      const cleanSettings = {
+        company: fullStoreState.company,
+        localization: fullStoreState.localization,
+        taxProfiles: fullStoreState.taxProfiles
+      };
+
+      const pdfBlob = await pdf(
+        <PaymentReceiptPDF
+          settings={cleanSettings as any}
+          invoiceMeta={invoiceMeta}
+          client={client}
+          items={items}
+          subtotal={subtotal}
+          taxBreakdown={taxBreakdown}
+          grandTotal={grandTotal}
+          paymentDetails={{
+            method: invoiceMeta.payment_method || 'N/A',
+            date: invoiceMeta.payment_date || invoiceMeta.issue_date
+          }}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Receipt_${invoiceMeta.invoice_number}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to generate receipt PDF', 'error');
+    }
+  };
+
   const handleSaveInvoice = async () => {
     setIsSaving(true);
     let success = false;
@@ -997,6 +1034,16 @@ export const InvoiceEditor = () => {
               onClick={() => setPaymentModalOpen(true)}
             >
               <CheckCircle size={18} /> Record Payment
+            </button>
+          )}
+
+          {isEditMode && invoiceMeta.status === 'Paid' && (
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', height: 48, background: 'var(--success-color)', border: 'none' }} 
+              onClick={handleDownloadReceipt}
+            >
+              <Download size={18} /> Download Receipt
             </button>
           )}
 

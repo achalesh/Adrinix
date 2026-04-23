@@ -2,8 +2,10 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Plus, Edit2, Trash2, Search,
-  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2, MessageCircle
+  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2, MessageCircle, FileCheck
 } from 'lucide-react';
+import { pdf } from '@react-pdf/renderer';
+import { PaymentReceiptPDF } from '../components/PaymentReceiptPDF';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
@@ -118,6 +120,54 @@ export const InvoiceList: React.FC = () => {
     const url = `${window.location.origin}/portal/${activeCompanyId}/${inv.public_token}`;
     const text = `Hello! Here is your invoice ${inv.invoice_number} from ${useSettingsStore.getState().company.name}. You can view and download it here: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleDownloadReceipt = async (inv: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const fullStoreState = useSettingsStore.getState();
+      const cleanSettings = {
+        company: fullStoreState.company,
+        localization: fullStoreState.localization,
+        taxProfiles: fullStoreState.taxProfiles
+      };
+
+      const pdfBlob = await pdf(
+        <PaymentReceiptPDF
+          settings={cleanSettings as any}
+          invoiceMeta={{
+            invoice_number: inv.invoice_number,
+            issue_date: inv.issue_date,
+            status: inv.status,
+            payment_method: inv.payment_method || '',
+            payment_date: inv.payment_date || ''
+          }}
+          client={{
+            name: inv.client_name,
+            email: '',
+            address: ''
+          }}
+          items={[]} 
+          subtotal={Number(inv.subtotal || 0)}
+          taxBreakdown={{}} 
+          grandTotal={Number(inv.grand_total)}
+          paymentDetails={{
+            method: inv.payment_method || 'N/A',
+            date: inv.payment_date || inv.issue_date
+          }}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Receipt_${inv.invoice_number}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to generate receipt', 'error');
+    }
   };
   const filtered = useMemo(() => invoices.filter(inv => {
     const q = search.toLowerCase();
@@ -270,6 +320,15 @@ export const InvoiceList: React.FC = () => {
                               }}
                             >
                               <CheckCircle size={14} />
+                            </button>
+                          )}
+                          {inv.status === 'Paid' && (
+                            <button
+                              className={`${styles.iconBtn} ${styles.iconBtnSuccess}`}
+                              title="Download Receipt"
+                              onClick={(e) => handleDownloadReceipt(inv, e)}
+                            >
+                              <FileCheck size={14} />
                             </button>
                           )}
                           <button
