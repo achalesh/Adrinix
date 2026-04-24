@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
