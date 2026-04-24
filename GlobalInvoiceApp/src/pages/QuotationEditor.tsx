@@ -143,11 +143,13 @@ export const QuotationEditor = () => {
 
   return (
     <div className={styles.page}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={() => navigate('/quotations')} className={styles.btnCancel} style={{ width: 'auto', margin: 0, padding: '8px 15px' }}>
-          <ArrowLeft size={16} /> Back
+      <div style={{ marginBottom: 30, display: 'flex', alignItems: 'center', gap: 15 }}>
+        <button onClick={() => navigate('/quotations')} className={styles.btnCancel} style={{ width: 'auto', margin: 0, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ArrowLeft size={18} /> Back to List
         </button>
-        <h2 style={{ margin: 0, fontSize: 20, color: '#458b6e' }}>{isEditMode ? 'Edit Proposal' : 'Create New Proposal'}</h2>
+        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.5px' }}>
+          {isEditMode ? 'Edit Proposal' : 'New Quotation'}
+        </h1>
       </div>
 
       <div className={styles.editorContainer}>
@@ -155,22 +157,26 @@ export const QuotationEditor = () => {
         <div className={styles.quotationCard}>
           <div className={styles.header}>
             <div className={styles.companyInfo}>
-              <h2>{company?.name || 'FAUGET'}</h2>
-              <p>DESIGN STUDIO</p>
-              <div style={{ marginTop: 15 }}>
-                <p>{company?.address || '123 Anywhere St., Any City'}</p>
-                <p>{company?.phone || '+123-456-7890'}</p>
+              {company?.logo ? (
+                <img src={company.logo} alt="Logo" style={{ height: 60, marginBottom: 15, objectFit: 'contain' }} />
+              ) : (
+                <h2 style={{ fontSize: 32, fontWeight: 800, color: 'var(--primary-color)', margin: '0 0 10px 0' }}>{company?.name || 'ADRINIX'}</h2>
+              )}
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>{company?.name}</p>
+              <div style={{ marginTop: 10 }}>
+                <p>{company?.address}</p>
+                <p>{company?.phone} &bull; {company?.email}</p>
               </div>
             </div>
 
             <div className={styles.metaGrid}>
               <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>CUSTOMER ID:</span>
+                <span className={styles.metaLabel}>PROPOSAL NO:</span>
                 <input 
                   className={styles.metaValue} 
-                  value={client.customer_id} 
-                  onChange={e => setClient({...client, customer_id: e.target.value})}
-                  style={{ border: 'none', background: 'transparent', textAlign: 'right', width: 100 }}
+                  value={meta.invoice_number} 
+                  onChange={e => setMeta({...meta, invoice_number: e.target.value})}
+                  style={{ width: 120 }}
                 />
               </div>
               <div className={styles.metaItem}>
@@ -180,62 +186,77 @@ export const QuotationEditor = () => {
                   className={styles.metaValue} 
                   value={meta.issue_date}
                   onChange={e => setMeta({...meta, issue_date: e.target.value})}
-                  style={{ border: 'none', background: 'transparent', textAlign: 'right' }}
                 />
               </div>
               <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>CLIENT:</span>
+                <span className={styles.metaLabel}>CUSTOMER ID:</span>
                 <input 
-                   placeholder="CLIENT NAME"
+                   placeholder="CUST-001"
                    className={styles.metaValue}
-                   value={client.name}
-                   onChange={e => setClient({...client, name: e.target.value.toUpperCase()})}
-                   style={{ border: 'none', background: 'transparent', textAlign: 'right', color: '#458b6e' }}
+                   value={client.customer_id}
+                   onChange={e => setClient({...client, customer_id: e.target.value})}
+                   style={{ width: 100 }}
                 />
               </div>
             </div>
           </div>
 
           <div className={styles.clientSection}>
-             <span className={styles.sectionTitle}>Bill To</span>
-             <input 
-                placeholder="Client Email" 
-                className={styles.input} 
-                style={{ fontSize: 13, marginBottom: 5 }}
-                value={client.email}
-                onChange={e => setClient({...client, email: e.target.value})}
-             />
-             <textarea 
-                placeholder="Client Address" 
-                className={styles.input} 
-                style={{ fontSize: 13, minHeight: 60 }}
-                value={client.address}
-                onChange={e => setClient({...client, address: e.target.value})}
-             />
+             <span className={styles.sectionTitle}><User size={14} /> Client Information</span>
+             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+               <div>
+                 <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Client Name</label>
+                 <input 
+                    placeholder="Enter Client Name" 
+                    className={styles.input}
+                    value={client.name}
+                    onChange={e => setClient({...client, name: e.target.value})}
+                 />
+               </div>
+               <div>
+                 <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Email Address</label>
+                 <input 
+                    placeholder="client@example.com" 
+                    className={styles.input} 
+                    value={client.email}
+                    onChange={e => setClient({...client, email: e.target.value})}
+                 />
+               </div>
+             </div>
+             <div style={{ marginTop: 15 }}>
+               <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Billing Address</label>
+               <textarea 
+                  placeholder="Street, City, State, Country" 
+                  className={styles.input} 
+                  style={{ minHeight: 60 }}
+                  value={client.address}
+                  onChange={e => setClient({...client, address: e.target.value})}
+               />
+             </div>
           </div>
 
           <table className={styles.itemsTable}>
             <thead>
               <tr>
-                <th style={{ width: '50%' }}>Item Description</th>
+                <th style={{ width: '50%' }}>Description</th>
                 <th>Qty</th>
                 <th>Price</th>
                 <th>Total</th>
-                <th style={{ width: 40 }}></th>
+                <th style={{ width: 50 }}></th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, idx) => (
-                <tr key={item.id} className={idx % 2 === 0 ? '' : styles.rowEven}>
+                <tr key={item.id}>
                   <td>
                     <input 
-                      placeholder="e.g. Website Design" 
+                      placeholder="Service or Product name" 
                       className={styles.input}
                       value={item.description}
                       onChange={e => updateItem(item.id, 'description', e.target.value)}
                     />
                   </td>
-                  <td>
+                  <td style={{ width: 80 }}>
                     <input 
                       type="number" 
                       className={styles.input}
@@ -243,7 +264,7 @@ export const QuotationEditor = () => {
                       onChange={e => updateItem(item.id, 'quantity', Number(e.target.value))}
                     />
                   </td>
-                  <td>
+                  <td style={{ width: 120 }}>
                     <input 
                       type="number" 
                       className={styles.input}
@@ -251,12 +272,12 @@ export const QuotationEditor = () => {
                       onChange={e => updateItem(item.id, 'unit_price', Number(e.target.value))}
                     />
                   </td>
-                  <td style={{ fontWeight: 600 }}>
+                  <td style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-main)' }}>
                     {formatCurrency(item.quantity * item.unit_price, loc, cur)}
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
-                      <Trash2 size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </td>
                 </tr>
@@ -265,45 +286,45 @@ export const QuotationEditor = () => {
           </table>
 
           <button className={styles.addItemBtn} onClick={handleAddItem}>
-            <Plus size={14} /> Add Line Item
+            <Plus size={16} /> Add Line Item
           </button>
 
           <div className={styles.totalsSection}>
             <div className={styles.totalRow}>
-              <span>SUB TOTAL</span>
+              <span>Subtotal</span>
               <span>{formatCurrency(subtotal, loc, cur)}</span>
             </div>
             <div className={styles.totalRow}>
-              <span>TAX (10%)</span>
+              <span>Est. Tax (10%)</span>
               <span>{formatCurrency(tax, loc, cur)}</span>
             </div>
             <div className={`${styles.totalRow} ${styles.grandTotal}`}>
-              <span>GRAND TOTAL</span>
+              <span>Estimated Total</span>
               <span>{formatCurrency(grandTotal, loc, cur)}</span>
             </div>
           </div>
 
           <div className={styles.footerGrid}>
             <div className={styles.footerBox}>
-              <h3>Payable To</h3>
-              <p>{company?.name || 'Fauget Design Studio'}</p>
-              <p>{company?.phone || '+123-456-7890'}</p>
-              <p>{company?.bank_details || 'Bank Account Info'}</p>
+              <h3><BookOpen size={14} style={{ marginRight: 8 }} /> Payment Info</h3>
+              <p><strong>Payable To:</strong> {company?.name}</p>
+              <p><strong>Bank Details:</strong> {company?.bank_details || 'Please contact for account details'}</p>
+              <p><strong>Phone:</strong> {company?.phone}</p>
             </div>
             <div className={styles.footerBox}>
-              <h3>Terms and conditions:</h3>
+              <h3><FileText size={14} style={{ marginRight: 8 }} /> Proposal Terms</h3>
               <textarea 
                  className={styles.input}
-                 style={{ fontSize: 12, minHeight: 100, border: 'none', padding: 0 }}
+                 style={{ fontSize: 13, minHeight: 100, background: 'transparent', border: 'none', padding: 0, resize: 'none' }}
                  value={meta.client_notes}
                  onChange={e => setMeta({...meta, client_notes: e.target.value})}
               />
             </div>
           </div>
 
-          <div style={{ marginTop: 40, textAlign: 'center', borderTop: '1px solid #eee', paddingTop: 20 }}>
-             <p style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em' }}>
-               {company?.phone} &nbsp; | &nbsp; {company?.email} &nbsp; | &nbsp; {company?.website || 'www.adrinix.com'}
+          <div style={{ marginTop: 40, textAlign: 'center', borderTop: '1px solid var(--panel-border)', paddingTop: 20 }}>
+             <p style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '0.1em' }}>
+               {company?.website || 'www.adrinix.com'} &bull; {company?.email}
              </p>
           </div>
         </div>
@@ -311,15 +332,15 @@ export const QuotationEditor = () => {
         {/* Sidebar Actions */}
         <div className={styles.sidebar}>
           <div className={styles.actionCard}>
-            <span className={styles.sectionTitle}>Actions</span>
+            <span className={styles.sectionTitle}>Publishing</span>
             <button className={styles.btnSave} onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : <><Save size={18} /> Save Proposal</>}
+              {isSaving ? 'Saving...' : <><Save size={20} /> Save Proposal</>}
             </button>
-            <div style={{ marginTop: 15 }}>
-               <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Status</label>
+            
+            <div style={{ marginTop: 24 }}>
+               <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 10 }}>Current Status</label>
                <select 
                  className={styles.input} 
-                 style={{ border: '1px solid #ddd' }}
                  value={meta.status}
                  onChange={e => setMeta({...meta, status: e.target.value})}
                >
@@ -327,24 +348,27 @@ export const QuotationEditor = () => {
                  <option value="Sent">Sent</option>
                </select>
             </div>
-            <div style={{ marginTop: 15 }}>
-               <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Valid Until</label>
+            
+            <div style={{ marginTop: 20 }}>
+               <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 10 }}>Validity Period</label>
                <input 
                  type="date" 
                  className={styles.input} 
-                 style={{ border: '1px solid #ddd' }}
                  value={meta.due_date}
                  onChange={e => setMeta({...meta, due_date: e.target.value})}
                />
+               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
+                 Proposal will expire on this date.
+               </p>
             </div>
           </div>
 
-          <div className={styles.actionCard} style={{ background: '#f0faf5', border: '1px solid #458b6e' }}>
-             <h3 style={{ fontSize: 14, color: '#458b6e', marginTop: 0 }}>Proposal Tips</h3>
-             <ul style={{ paddingLeft: 18, fontSize: 13, color: '#555', margin: 0 }}>
-               <li style={{ marginBottom: 8 }}>Keep your description clear and professional.</li>
-               <li style={{ marginBottom: 8 }}>Standard 10% tax is applied for this template.</li>
-               <li>Ensure the expiry date is realistic.</li>
+          <div className={styles.actionCard} style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+             <h3 style={{ fontSize: 15, color: 'var(--primary-color)', marginTop: 0, marginBottom: 12, fontWeight: 700 }}>Sales Tips</h3>
+             <ul style={{ paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
+               <li style={{ marginBottom: 10 }}>Add clear project milestones in the description.</li>
+               <li style={{ marginBottom: 10 }}>Use the terms section to outline scope boundaries.</li>
+               <li>Personalized notes increase approval rates by 35%.</li>
              </ul>
           </div>
         </div>
