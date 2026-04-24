@@ -7,6 +7,7 @@ import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './QuotationEditor.module.css';
+import { X, Search } from 'lucide-react';
 
 interface QuotationItem {
   id: string;
@@ -14,6 +15,9 @@ interface QuotationItem {
   quantity: number;
   unit_price: number;
 }
+
+const API_CLIENTS = `${API_BASE}/clients.php`;
+const API_PRODUCTS = `${API_BASE}/products.php`;
 
 export const QuotationEditor = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +42,17 @@ export const QuotationEditor = () => {
   const [items, setItems] = useState<QuotationItem[]>([
     { id: Math.random().toString(36).substr(2, 9), description: '', quantity: 1, unit_price: 0 }
   ]);
+
+  // Client Picker State
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientsList, setClientsList] = useState<any[]>([]);
+  const [clientSearch, setClientSearch] = useState('');
+
+  // Catalog Picker State
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [productList, setProductList] = useState<any[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [activeItemForCatalog, setActiveItemForCatalog] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -76,6 +91,61 @@ export const QuotationEditor = () => {
       setIsLoading(false);
     }
   };
+
+  const openClientPicker = async () => {
+    setClientPickerOpen(true);
+    setClientSearch('');
+    try {
+      const res = await authFetch(API_CLIENTS);
+      const data = await res.json();
+      if (data.status === 'success') setClientsList(data.data);
+    } catch { showToast('Failed to load clients', 'error'); }
+  };
+
+  const pickClient = (c: any) => {
+    setClient({
+      name: c.name || '',
+      email: c.email || '',
+      address: c.billing_address || '',
+      customer_id: c.customer_id || '3110-01'
+    });
+    setClientPickerOpen(false);
+  };
+
+  const openCatalog = (itemId: string) => {
+    setActiveItemForCatalog(itemId);
+    setCatalogOpen(true);
+    setCatalogSearch('');
+    if (productList.length === 0) fetchProducts();
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await authFetch(API_PRODUCTS);
+      const data = await res.json();
+      if (data.status === 'success') setProductList(data.data);
+    } catch { showToast('Failed to load products', 'error'); }
+  };
+
+  const pickProduct = (p: any) => {
+    if (!activeItemForCatalog) return;
+    setItems(items.map(it => it.id === activeItemForCatalog ? {
+      ...it,
+      description: p.name,
+      unit_price: Number(p.unit_price)
+    } : it));
+    setCatalogOpen(false);
+  };
+
+  const filteredClients = clientsList.filter(c => {
+    const q = clientSearch.toLowerCase();
+    return !q || c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q);
+  });
+
+  const filteredProducts = productList.filter(p => {
+    const q = catalogSearch.toLowerCase();
+    return !q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+  });
 
   const handleAddItem = () => {
     setItems([...items, { id: Math.random().toString(36).substr(2, 9), description: '', quantity: 1, unit_price: 0 }]);
@@ -202,7 +272,12 @@ export const QuotationEditor = () => {
           </div>
 
           <div className={styles.clientSection}>
-             <span className={styles.sectionTitle}><User size={14} /> Client Information</span>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+               <span className={styles.sectionTitle}><User size={14} /> Client Information</span>
+               <button className={styles.btnSecondary} onClick={openClientPicker} style={{ fontSize: 12, padding: '4px 10px', height: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                 <Search size={12} /> Pick Client
+               </button>
+             </div>
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                <div>
                  <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Client Name</label>
@@ -249,12 +324,18 @@ export const QuotationEditor = () => {
               {items.map((item, idx) => (
                 <tr key={item.id}>
                   <td>
-                    <input 
-                      placeholder="Service or Product name" 
-                      className={styles.input}
-                      value={item.description}
-                      onChange={e => updateItem(item.id, 'description', e.target.value)}
-                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input 
+                        placeholder="Service or Product name" 
+                        className={styles.input}
+                        value={item.description}
+                        onChange={e => updateItem(item.id, 'description', e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <button className={styles.btnSecondary} onClick={() => openCatalog(item.id)} style={{ padding: '8px 10px', height: 'auto' }} title="Pick from catalog">
+                        <BookOpen size={14} />
+                      </button>
+                    </div>
                   </td>
                   <td style={{ width: 80 }}>
                     <input 
@@ -373,6 +454,66 @@ export const QuotationEditor = () => {
           </div>
         </div>
       </div>
+
+      {/* Client Picker Modal */}
+      {clientPickerOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Select Client</h3>
+              <button onClick={() => setClientPickerOpen(false)}><X size={20} /></button>
+            </div>
+            <div className={styles.searchBox}>
+              <Search size={16} />
+              <input 
+                placeholder="Search clients..." 
+                value={clientSearch}
+                onChange={e => setClientSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className={styles.modalList}>
+              {filteredClients.map(c => (
+                <div key={c.id} className={styles.modalItem} onClick={() => pickClient(c)}>
+                  <div className={styles.itemMain}>{c.name}</div>
+                  <div className={styles.itemSub}>{c.email}</div>
+                </div>
+              ))}
+              {filteredClients.length === 0 && <div className={styles.noResults}>No clients found</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Catalog Modal */}
+      {catalogOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Service Catalog</h3>
+              <button onClick={() => setCatalogOpen(false)}><X size={20} /></button>
+            </div>
+            <div className={styles.searchBox}>
+              <Search size={16} />
+              <input 
+                placeholder="Search services..." 
+                value={catalogSearch}
+                onChange={e => setCatalogSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className={styles.modalList}>
+              {filteredProducts.map(p => (
+                <div key={p.id} className={styles.modalItem} onClick={() => pickProduct(p)}>
+                  <div className={styles.itemMain}>{p.name}</div>
+                  <div className={styles.itemSub}>{formatCurrency(p.unit_price, loc, cur)}</div>
+                </div>
+              ))}
+              {filteredProducts.length === 0 && <div className={styles.noResults}>No services found</div>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
