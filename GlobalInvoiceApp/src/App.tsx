@@ -20,6 +20,7 @@ const QuotationEditor = lazy(() => import('./pages/QuotationEditor').then(m => (
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const InvoiceViewPage = lazy(() => import('./pages/InvoiceViewPage').then(m => ({ default: m.InvoiceViewPage })));
 const ClientPortal = lazy(() => import('./pages/ClientPortal').then(m => ({ default: m.ClientPortal })));
+const Help = lazy(() => import('./pages/Help').then(m => ({ default: m.Help })));
 import './index.css';
 
 
@@ -124,6 +125,7 @@ function App() {
           <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
           
           {/* Public Portal Route */}
           <Route path="/portal/:companyId/:token" element={<ClientPortal />} />
