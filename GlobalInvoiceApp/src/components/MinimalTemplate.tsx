@@ -87,6 +87,12 @@ export const MinimalTemplate: React.FC<TemplateProps> = ({
               <p className={styles.notesText}>{invoiceMeta.notes}</p>
             </>
           )}
+          {invoiceMeta.signature && (
+            <div style={{ marginTop: 30 }}>
+              <p className={styles.label}>Authorized Signature</p>
+              <img src={invoiceMeta.signature} alt="Signature" style={{ maxHeight: 80, filter: 'contrast(1.2)' }} />
+            </div>
+          )}
         </div>
         <div className={styles.totals}>
           <div className={styles.totalRow}>

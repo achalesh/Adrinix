@@ -41,8 +41,67 @@ export const ClientPortal = () => {
   const [feedback, setFeedback] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const handleAction = async (action: 'approve' | 'suggest_changes') => {
+  // Signature Canvas Logic
+  useEffect(() => {
+    if (showApproveModal && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+      }
+    }
+  }, [showApproveModal]);
+
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsDrawing(true);
+    draw(e);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.beginPath();
+    }
+  };
+
+  const draw = (e: any) => {
+    if (!isDrawing || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const clearSignature = () => {
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
+  const handleFinalApprove = () => {
+    const signature = canvasRef.current?.toDataURL();
+    handleAction('approve', signature);
+  };
+
+  const handleAction = async (action: 'approve' | 'suggest_changes', signature?: string) => {
     setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/portal.php`, {
@@ -52,14 +111,15 @@ export const ClientPortal = () => {
           company_id: companyId,
           token: token,
           action,
-          notes: action === 'suggest_changes' ? feedback : ''
+          notes: action === 'suggest_changes' ? feedback : '',
+          signature: signature || ''
         })
       });
       const data = await res.json();
       if (data.status === 'success') {
         setSuccessMessage(data.message);
         setShowFeedbackModal(false);
-        // Refresh data after a short delay
+        setShowApproveModal(false);
         setTimeout(() => window.location.reload(), 2500);
       }
     } catch (e) {
@@ -125,7 +185,8 @@ export const ClientPortal = () => {
     status: inv.status,
     notes: inv.notes,
     template: inv.template,
-    type: inv.type
+    type: inv.type,
+    signature: inv.signature
   };
 
   const client = {
@@ -165,7 +226,7 @@ export const ClientPortal = () => {
         </div>
         
         <div style={{ display: 'flex', gap: 12 }}>
-          {inv.type === 'Quotation' && inv.status !== 'Paid' && (
+          {inv.type === 'Quotation' && inv.status !== 'Paid' && inv.status !== 'Accepted' && (
             <>
               <button 
                 className="btn-secondary" 
@@ -177,7 +238,7 @@ export const ClientPortal = () => {
               </button>
               <button 
                 className="btn-primary" 
-                onClick={() => handleAction('approve')} 
+                onClick={() => setShowApproveModal(true)} 
                 disabled={isSubmitting}
                 style={{ borderRadius: 10, background: '#10b981', borderColor: '#10b981' }}
               >
@@ -204,6 +265,71 @@ export const ClientPortal = () => {
           localization={localization}
         />
       </div>
+
+      {/* Approve Modal with Signature */}
+      {showApproveModal && (
+        <div style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 20
+        }}>
+          <div className="glass-panel" style={{ maxWidth: 500, width: '100%', padding: 30, textAlign: 'center' }}>
+            <div style={{ 
+              width: 50, height: 50, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981',
+              margin: '0 auto 20px'
+            }}>
+              <CheckCircle size={24} />
+            </div>
+            <h3 style={{ marginTop: 0, marginBottom: 10 }}>Confirm Approval</h3>
+            <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 25 }}>
+              By signing below, you agree to the terms outlined in this proposal.
+            </p>
+            
+            <div style={{ 
+              background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+              borderRadius: 12, marginBottom: 20, position: 'relative'
+            }}>
+              <canvas 
+                ref={canvasRef}
+                width={440}
+                height={180}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{ cursor: 'crosshair', display: 'block', width: '100%' }}
+              />
+              <button 
+                onClick={clearSignature}
+                style={{ 
+                  position: 'absolute', bottom: 10, right: 10, 
+                  background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
+                  fontSize: 11, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em'
+                }}
+              >
+                Clear
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+              <button className="btn-secondary" onClick={() => setShowApproveModal(false)}>Cancel</button>
+              <button 
+                className="btn-primary" 
+                onClick={handleFinalApprove}
+                disabled={isSubmitting}
+                style={{ background: '#10b981', borderColor: '#10b981', padding: '10px 30px' }}
+              >
+                {isSubmitting ? 'Approving...' : 'Confirm & Sign'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feedback Modal */}
       {showFeedbackModal && (

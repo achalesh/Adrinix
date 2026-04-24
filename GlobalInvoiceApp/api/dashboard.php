@@ -24,20 +24,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $invoicesTable = t('invoices');
 $clientsTable = t('clients');
 
-// --- 1. Invoice Stats ---
+// --- 1. Combined Stats ---
 $stmt = $conn->prepare("
     SELECT 
+        -- Invoice Stats
         COUNT(CASE WHEN type = 'Invoice' OR type IS NULL THEN 1 END) AS total_invoices,
         COALESCE(SUM(CASE WHEN type = 'Invoice' OR type IS NULL THEN grand_total ELSE 0 END), 0) AS total_revenue,
         COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Paid' THEN grand_total ELSE 0 END), 0) AS paid_revenue,
-        COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Draft' THEN grand_total ELSE 0 END), 0) AS draft_revenue,
         COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Overdue' THEN grand_total ELSE 0 END), 0) AS overdue_revenue,
         COALESCE(SUM(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Sent' THEN grand_total ELSE 0 END), 0) AS sent_revenue,
         COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Paid' THEN 1 END) AS paid_count,
-        COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Draft' THEN 1 END) AS draft_count,
         COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Overdue' THEN 1 END) AS overdue_count,
         COUNT(CASE WHEN (type = 'Invoice' OR type IS NULL) AND status = 'Sent' THEN 1 END) AS sent_count,
-        COUNT(CASE WHEN type = 'Quotation' THEN 1 END) AS quotation_count
+        
+        -- Quotation Pipeline Stats
+        COUNT(CASE WHEN type = 'Quotation' THEN 1 END) AS total_quotations,
+        COUNT(CASE WHEN type = 'Quotation' AND status = 'Draft' THEN 1 END) AS quote_draft_count,
+        COUNT(CASE WHEN type = 'Quotation' AND status = 'Sent' THEN 1 END) AS quote_sent_count,
+        COUNT(CASE WHEN type = 'Quotation' AND status = 'Accepted' THEN 1 END) AS quote_accepted_count,
+        COUNT(CASE WHEN type = 'Quotation' AND status = 'Declined' THEN 1 END) AS quote_declined_count,
+        COALESCE(SUM(CASE WHEN type = 'Quotation' AND status IN ('Draft', 'Sent') THEN grand_total ELSE 0 END), 0) AS quote_pipeline_value,
+        COALESCE(SUM(CASE WHEN type = 'Quotation' AND status = 'Accepted' THEN grand_total ELSE 0 END), 0) AS quote_won_value
     FROM `{$invoicesTable}`
     WHERE user_id = ?
 ");
@@ -47,7 +54,7 @@ $stats = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 // Caste decimal strings to numbers
-foreach(['total_revenue', 'paid_revenue', 'draft_revenue', 'overdue_revenue', 'sent_revenue'] as $key) {
+foreach(['total_revenue', 'paid_revenue', 'overdue_revenue', 'sent_revenue', 'quote_pipeline_value', 'quote_won_value'] as $key) {
     if (isset($stats[$key])) $stats[$key] = (float)$stats[$key];
 }
 

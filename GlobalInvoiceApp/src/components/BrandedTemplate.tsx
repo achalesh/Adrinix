@@ -111,6 +111,12 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
                 <p className={styles.notesBody}>{invoiceMeta.notes}</p>
               </>
             )}
+            {invoiceMeta.signature && (
+              <div style={{ marginTop: 24, padding: 16, background: 'rgba(0,0,0,0.02)', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
+                <span className={styles.label} style={{ display: 'block', marginBottom: 10 }}>Authorized Signature</span>
+                <img src={invoiceMeta.signature} alt="Signature" style={{ maxHeight: 60, mixBlendMode: 'multiply' }} />
+              </div>
+            )}
           </div>
           <div className={styles.totals}>
             <div className={styles.totalRow}>

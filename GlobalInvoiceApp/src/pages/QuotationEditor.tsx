@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
@@ -14,6 +14,15 @@ interface QuotationItem {
   description: string;
   quantity: number;
   unit_price: number;
+}
+
+interface Milestone {
+  id?: number;
+  description: string;
+  percentage: number;
+  amount: number;
+  status: 'Pending' | 'Invoiced';
+  generated_invoice_id?: number;
 }
 
 const API_CLIENTS = `${API_BASE}/clients.php`;
@@ -42,6 +51,7 @@ export const QuotationEditor = () => {
   const [items, setItems] = useState<QuotationItem[]>([
     { id: Math.random().toString(36).substr(2, 9), description: '', quantity: 1, unit_price: 0 }
   ]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   // Client Picker State
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
@@ -53,6 +63,11 @@ export const QuotationEditor = () => {
   const [productList, setProductList] = useState<any[]>([]);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [activeItemForCatalog, setActiveItemForCatalog] = useState<string | null>(null);
+
+  // AI Assistant State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiGoal, setAiGoal] = useState('');
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -84,6 +99,13 @@ export const QuotationEditor = () => {
           quantity: Number(i.quantity),
           unit_price: Number(i.unit_price)
         })));
+        if (d.milestones) {
+          setMilestones(d.milestones.map((m: any) => ({
+            ...m,
+            percentage: Number(m.percentage),
+            amount: Number(m.amount)
+          })));
+        }
       }
     } catch (e) {
       showToast('Failed to load quotation', 'error');
@@ -159,9 +181,75 @@ export const QuotationEditor = () => {
     if (items.length > 1) setItems(items.filter(i => i.id !== id));
   };
 
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0), [items]);
-  const tax = subtotal * 0.1; // Default 10% tax for the template
-  const grandTotal = subtotal + tax;
+  const loc = localization?.locale || 'en-US';
+  const cur = localization?.currencyCode || 'USD';
+
+  // ── AI Logic ──────────────────────────────────────────────────────────────
+  const handleAiSuggest = async () => {
+    if (!aiGoal) return;
+    setIsAiProcessing(true);
+    try {
+      const res = await authFetch(`${API_BASE}/ai.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'suggest_items', goal: aiGoal })
+      });
+      const payload = await res.json();
+      if (payload.status === 'success') {
+        const newItems = payload.data.map((item: any) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price
+        }));
+        setItems(newItems);
+        setAiModalOpen(false);
+        showToast('AI has populated your project items!', 'success');
+      }
+    } catch { showToast('AI Assistant is temporarily unavailable', 'error'); }
+    finally { setIsAiProcessing(false); }
+  };
+
+  const handleAiRefine = async () => {
+    setIsAiProcessing(true);
+    try {
+      const res = await authFetch(`${API_BASE}/ai.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'refine_text', text: meta.client_notes })
+      });
+      const payload = await res.json();
+      if (payload.status === 'success') {
+        setMeta({ ...meta, client_notes: payload.data });
+        showToast('Text professionally refined by AI', 'success');
+      }
+    } catch { showToast('AI Refinement failed', 'error'); }
+    finally { setIsAiProcessing(false); }
+  };
+
+  const handleConvert = async () => {
+    if (!id) return;
+    if (!confirm('Convert this proposal to a formal invoice?')) return;
+    setIsSaving(true);
+    try {
+      const res = await authFetch(`${API_BASE}/invoices.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'convert_to_invoice', id })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast('Successfully converted to Invoice!', 'success');
+        navigate(`/invoices/${data.invoice_id}`);
+      } else {
+        showToast(data.message || 'Conversion failed', 'error');
+      }
+    } catch {
+      showToast('Network error during conversion', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!client.name) {
@@ -183,7 +271,9 @@ export const QuotationEditor = () => {
         type: 'Quotation',
         client_notes: meta.client_notes,
         items: items.map(i => ({ description: i.description, quantity: i.quantity, unit_price: i.unit_price })),
-        grand_total: grandTotal
+        tax_total: tax,
+        grand_total: grandTotal,
+        milestones
       };
 
       const res = await authFetch(`${API_BASE}/invoices.php`, {
@@ -365,10 +455,15 @@ export const QuotationEditor = () => {
               ))}
             </tbody>
           </table>
-
-          <button className={styles.addItemBtn} onClick={handleAddItem}>
-            <Plus size={16} /> Add Line Item
-          </button>
+          
+          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+            <button className={styles.addItemBtn} onClick={handleAddItem} style={{ marginTop: 0, flex: 1 }}>
+              <Plus size={16} /> Add Custom Item
+            </button>
+            <button className={styles.aiButton} onClick={() => setAiModalOpen(true)}>
+              <BrainCircuit size={16} /> Use AI Project Assistant
+            </button>
+          </div>
 
           <div className={styles.totalsSection}>
             <div className={styles.totalRow}>
@@ -393,7 +488,17 @@ export const QuotationEditor = () => {
               <p><strong>Phone:</strong> {company?.phone}</p>
             </div>
             <div className={styles.footerBox}>
-              <h3><FileText size={14} style={{ marginRight: 8 }} /> Proposal Terms</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ margin: 0 }}><FileText size={14} style={{ marginRight: 8 }} /> Proposal Terms</h3>
+                <button 
+                  className={styles.aiRefineBtn} 
+                  onClick={handleAiRefine} 
+                  disabled={isAiProcessing}
+                  title="Refine with AI"
+                >
+                  <Sparkles size={14} /> {isAiProcessing ? 'Polishing...' : 'Refine with AI'}
+                </button>
+              </div>
               <textarea 
                  className={styles.input}
                  style={{ fontSize: 13, minHeight: 100, background: 'transparent', border: 'none', padding: 0, resize: 'none' }}
@@ -417,6 +522,17 @@ export const QuotationEditor = () => {
             <button className={styles.btnSave} onClick={handleSave} disabled={isSaving}>
               {isSaving ? 'Saving...' : <><Save size={20} /> Save Proposal</>}
             </button>
+
+            {isEditMode && (
+              <button 
+                className={styles.btnSave} 
+                onClick={handleConvert} 
+                disabled={isSaving}
+                style={{ background: 'var(--success-color)', marginTop: 12, fontSize: 13, height: 44 }}
+              >
+                {isSaving ? 'Processing...' : <><FileCheck size={18} /> Convert to Invoice</>}
+              </button>
+            )}
             
             <div style={{ marginTop: 24 }}>
                <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 10 }}>Current Status</label>
@@ -510,6 +626,183 @@ export const QuotationEditor = () => {
                 </div>
               ))}
               {filteredProducts.length === 0 && <div className={styles.noResults}>No services found</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Milestones Section --- */}
+      <div className={styles.section} style={{ marginTop: 40, animation: 'fadeInUp 0.6s ease 0.2s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className={styles.iconBox} style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
+              <Clock size={20} />
+            </div>
+            <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Project Milestones</h2>
+          </div>
+          <button 
+            className={styles.btnAdd} 
+            onClick={() => setMilestones([...milestones, { description: '', percentage: 0, amount: 0, status: 'Pending' }])}
+          >
+            <Plus size={16} /> Add Phase
+          </button>
+        </div>
+
+        <div className={styles.glassTableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Phase Description</th>
+                <th style={{ width: 120 }}>%</th>
+                <th style={{ width: 180 }}>Amount</th>
+                <th style={{ width: 120 }}>Status</th>
+                <th style={{ width: 150 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {milestones.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className={styles.emptyState}>No milestones defined. Break this project into phases.</td>
+                </tr>
+              ) : (
+                milestones.map((m, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <input 
+                        className={styles.itemInput} 
+                        value={m.description} 
+                        placeholder="e.g. Initial Deposit"
+                        onChange={(e) => {
+                          const newM = [...milestones];
+                          newM[idx].description = e.target.value;
+                          setMilestones(newM);
+                        }}
+                        disabled={m.status === 'Invoiced'}
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        className={styles.itemInput} 
+                        type="number" 
+                        value={m.percentage} 
+                        onChange={(e) => {
+                          const p = Number(e.target.value);
+                          const newM = [...milestones];
+                          newM[idx].percentage = p;
+                          newM[idx].amount = (grandTotal * p) / 100;
+                          setMilestones(newM);
+                        }}
+                        disabled={m.status === 'Invoiced'}
+                      />
+                    </td>
+                    <td>
+                      <div className={styles.itemInput} style={{ background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center' }}>
+                        {formatCurrency(m.amount, loc, cur)}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={m.status === 'Invoiced' ? styles.statusInvoiced : styles.statusPending}>
+                        {m.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {m.status === 'Pending' && isEditMode && (
+                          <button 
+                            className={styles.btnAction} 
+                            onClick={async () => {
+                              if (!confirm('Generate invoice for this milestone?')) return;
+                              try {
+                                const res = await authFetch(`${API_BASE}/invoices.php`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ action: 'invoice_milestone', milestone_id: m.id })
+                                });
+                                const data = await res.json();
+                                if (data.status === 'success') {
+                                  showToast('Milestone invoice generated!', 'success');
+                                  navigate(`/invoices/${data.invoice_id}`);
+                                } else {
+                                  showToast(data.message, 'error');
+                                }
+                              } catch { showToast('Network error', 'error'); }
+                            }}
+                            title="Generate Invoice"
+                          >
+                            <FileText size={16} />
+                          </button>
+                        )}
+                        {m.status === 'Invoiced' && (
+                          <button 
+                            className={styles.btnAction} 
+                            onClick={() => navigate(`/invoices/${m.generated_invoice_id}`)}
+                            title="View Invoice"
+                          >
+                            <ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
+                          </button>
+                        )}
+                        <button 
+                          className={styles.btnRemove} 
+                          onClick={() => setMilestones(milestones.filter((_, i) => i !== idx))}
+                          disabled={m.status === 'Invoiced'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {milestones.length > 0 && (
+          <div style={{ marginTop: 12, padding: '0 10px', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+            <span style={{ color: Math.abs(milestones.reduce((s, m) => s + m.percentage, 0) - 100) < 0.1 ? '#10b981' : '#f59e0b' }}>
+              Total Allocation: {milestones.reduce((s, m) => s + m.percentage, 0)}%
+            </span>
+            <span style={{ opacity: 0.6 }}>Milestones help you bill project phases separately.</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── AI Assistant Modal ── */}
+      {aiModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={`${styles.modalContent} ${styles.aiModal}`}>
+            <div className={styles.modalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className={styles.aiIconBox}><BrainCircuit size={20} /></div>
+                <h3>AI Project Assistant</h3>
+              </div>
+              <button onClick={() => setAiModalOpen(false)}><X size={20} /></button>
+            </div>
+            <div className={styles.aiModalBody}>
+              <p className={styles.aiHint}>Tell the AI what you're building, and it will generate a professional list of items and pricing for your proposal.</p>
+              <textarea 
+                className={styles.aiInput}
+                placeholder="e.g. A 5-page business website with contact form and SEO optimization..."
+                value={aiGoal}
+                onChange={(e) => setAiGoal(e.target.value)}
+                autoFocus
+              />
+              <div className={styles.aiActionRow}>
+                <button 
+                  className={styles.aiGenerateBtn} 
+                  onClick={handleAiSuggest}
+                  disabled={!aiGoal || isAiProcessing}
+                >
+                  {isAiProcessing ? (
+                    <>Generating Suggestions...</>
+                  ) : (
+                    <>
+                      <Sparkles size={16} /> 
+                      Generate Proposal Items
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -91,9 +91,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $invoicesTable = $prefix . "invoices";
 
     if ($action === 'approve') {
+        $signature = $data['signature'] ?? null;
+        
         // Convert Quotation to Invoice and set status to Sent (awaiting payment)
-        $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET type = 'Invoice', status = 'Sent', client_notes = NULL WHERE public_token = ?");
-        $stmt->bind_param("s", $token);
+        // Also update the invoice number to INV- format if it was QTN-
+        $stmt = $conn->prepare("
+            UPDATE `{$invoicesTable}` 
+            SET type = 'Invoice', 
+                status = 'Sent', 
+                client_notes = NULL, 
+                signature = ?,
+                invoice_number = REPLACE(invoice_number, 'QTN-', 'INV-')
+            WHERE public_token = ?
+        ");
+        $stmt->bind_param("ss", $signature, $token);
         if ($stmt->execute()) {
              echo json_encode(['status' => 'success', 'message' => 'Quotation approved! Your official invoice is now ready.']);
         } else {

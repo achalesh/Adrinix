@@ -82,6 +82,18 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
             $stmt2->close();
 
             $invoice['items'] = $items;
+
+            // Fetch Milestones
+            $milestonesTable = t('milestones');
+            $stmt3 = $conn->prepare("SELECT * FROM `{$milestonesTable}` WHERE invoice_id = ? ORDER BY id ASC");
+            $stmt3->bind_param("i", $id);
+            $stmt3->execute();
+            $result3 = $stmt3->get_result();
+            $milestones = [];
+            while ($row = $result3->fetch_assoc()) { $milestones[] = $row; }
+            $stmt3->close();
+            $invoice['milestones'] = $milestones;
+
             echo json_encode(['status' => 'success', 'data' => $invoice]);
             exit;
         }
@@ -90,7 +102,8 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
         if ($action === 'update_status') {
             $id = (int)($data['id'] ?? 0);
             $status = $data['status'] ?? '';
-            if (!in_array($status, ['Draft','Sent','Paid','Overdue'])) {
+            $validStatuses = ['Draft','Sent','Paid','Overdue','Accepted','Declined'];
+            if (!in_array($status, $validStatuses)) {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid status']); exit;
             }
             
@@ -101,6 +114,116 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
             $stmt->bind_param("sssii", $status, $pay_method, $pay_date, $id, $user_id);
             $stmt->execute(); $stmt->close();
             echo json_encode(['status' => 'success', 'message' => 'Status updated']);
+            exit;
+        }
+
+        // ── INVOICE A SPECIFIC MILESTONE ──────────────────────────────────────────
+        if ($action === 'invoice_milestone') {
+            $milestone_id = (int)($data['milestone_id'] ?? 0);
+            $conn->begin_transaction();
+            try {
+                $milestonesTable = t('milestones');
+                // 1. Get milestone data
+                $stmt = $conn->prepare("SELECT m.*, i.client_id, i.template, i.currency_code, i.notes FROM `{$milestonesTable}` m JOIN `{$invoicesTable}` i ON m.invoice_id = i.id WHERE m.id=? AND i.user_id=?");
+                $stmt->bind_param("ii", $milestone_id, $user_id);
+                $stmt->execute();
+                $m = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if (!$m) throw new Exception("Milestone not found");
+                if ($m['status'] === 'Invoiced') throw new Exception("Milestone already invoiced");
+
+                // 2. Create new invoice
+                $newNumber = 'INV-M-' . date('Ymd') . '-' . $milestone_id;
+                $newToken = bin2hex(random_bytes(32));
+                
+                $si = $conn->prepare("
+                    INSERT INTO `{$invoicesTable}` 
+                    (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, type, public_token, parent_invoice_id)
+                    VALUES (?, ?, ?, 'Draft', ?, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), ?, 0, ?, ?, 'Invoice', ?, ?)
+                ");
+                $notes = "Milestone Invoice: " . $m['description'] . "\n\n" . ($m['notes'] ?? '');
+                $si->bind_param("iisssddssi", 
+                    $user_id, $m['client_id'], $newNumber, $m['template'], 
+                    $m['amount'], $m['amount'], $notes, $newToken, $m['invoice_id']
+                );
+                $si->execute();
+                $newInvoiceId = $conn->insert_id;
+                $si->close();
+
+                // 3. Add single item for this milestone
+                $sit = $conn->prepare("INSERT INTO `{$itemsTable}` (invoice_id, description, quantity, unit_price) VALUES (?, ?, 1, ?)");
+                $sit->bind_param("isd", $newInvoiceId, $m['description'], $m['amount']);
+                $sit->execute();
+                $sit->close();
+
+                // 4. Mark milestone as Invoiced
+                $upd = $conn->prepare("UPDATE `{$milestonesTable}` SET status='Invoiced', generated_invoice_id=? WHERE id=?");
+                $upd->bind_param("ii", $newInvoiceId, $milestone_id);
+                $upd->execute();
+                $upd->close();
+
+                $conn->commit();
+                echo json_encode(['status' => 'success', 'message' => 'Milestone Invoiced', 'invoice_id' => $newInvoiceId]);
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            exit;
+        }
+
+        // ── CONVERT QUOTATION TO INVOICE ──────────────────────────────────────────
+        if ($action === 'convert_to_invoice') {
+            $id = (int)($data['id'] ?? 0);
+            $conn->begin_transaction();
+            try {
+                // 1. Get quotation data
+                $stmt = $conn->prepare("SELECT * FROM `{$invoicesTable}` WHERE id=? AND user_id=? AND type='Quotation'");
+                $stmt->bind_param("ii", $id, $user_id);
+                $stmt->execute();
+                $quote = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if (!$quote) throw new Exception("Quotation not found");
+
+                // 2. Generate new invoice number
+                $newNumber = 'INV-' . date('Y') . '-' . str_pad($id, 4, '0', STR_PAD_LEFT);
+                $newToken = bin2hex(random_bytes(32));
+
+                // 3. Create new invoice
+                $si = $conn->prepare("
+                    INSERT INTO `{$invoicesTable}` 
+                    (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, type, public_token, parent_invoice_id)
+                    VALUES (?, ?, ?, 'Draft', ?, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), ?, ?, ?, ?, 'Invoice', ?, ?)
+                ");
+                $si->bind_param("iisssdddssi", 
+                    $user_id, $quote['client_id'], $newNumber, $quote['template'], 
+                    $quote['subtotal'], $quote['tax_total'], $quote['grand_total'], $quote['notes'], $newToken, $id
+                );
+                $si->execute();
+                $newInvoiceId = $conn->insert_id;
+                $si->close();
+
+                // 4. Copy items
+                $sit = $conn->prepare("
+                    INSERT INTO `{$itemsTable}` (invoice_id, description, quantity, unit_price, tax_method, tax_profile_id)
+                    SELECT ?, description, quantity, unit_price, tax_method, tax_profile_id
+                    FROM `{$itemsTable}` WHERE invoice_id = ?
+                ");
+                $sit->bind_param("ii", $newInvoiceId, $id);
+                $sit->execute();
+                $sit->close();
+
+                // 5. Mark quotation as Accepted
+                $upd = $conn->prepare("UPDATE `{$invoicesTable}` SET status='Accepted' WHERE id=?");
+                $upd->bind_param("i", $id);
+                $upd->execute();
+                $upd->close();
+
+                $conn->commit();
+                echo json_encode(['status' => 'success', 'message' => 'Converted to Invoice', 'invoice_id' => $newInvoiceId]);
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
             exit;
         }
 
@@ -123,7 +246,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
                     UPDATE `{$invoicesTable}` SET invoice_number=?, status=?, template=?, issue_date=?, due_date=?,
                         subtotal=?, tax_total=?, grand_total=?, notes=?,
                         is_recurring=?, recurrence_period=?, next_generation_date=?, recurrence_status=?, auto_send=?,
-                        public_token = ?
+                        public_token = ?, type = ?, client_notes = ?
                     WHERE id=? AND user_id=?
                 ");
                 $template = $data['template'] ?? 'minimal';
@@ -132,6 +255,8 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
                 $next_gen = !empty($data['next_generation_date']) ? $data['next_generation_date'] : null;
                 $rec_stat = $data['recurrence_status'] ?? 'active';
                 $auto_send = !empty($data['auto_send']) ? 1 : 0;
+                $doc_type = $data['type'] ?? 'Invoice';
+                $client_notes = $data['client_notes'] ?? null;
                 
                 // Get current token or generate new
                 $st = $conn->prepare("SELECT public_token FROM `{$invoicesTable}` WHERE id = ?");
@@ -139,12 +264,12 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
                 $rt = $st->get_result()->fetch_assoc(); $st->close();
                 $token = !empty($rt['public_token']) ? $rt['public_token'] : bin2hex(random_bytes(32));
     
-                $stmt->bind_param("sssssdddsisssisii",
+                $stmt->bind_param("sssssdddsisssisssii",
                     $data['invoice_number'], $data['status'], $template,
                     $data['issue_date'], $data['due_date'],
                     $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
                     $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send,
-                    $token, $id, $user_id
+                    $token, $doc_type, $client_notes, $id, $user_id
                 );
                 $stmt->execute(); $stmt->close();
     
@@ -170,6 +295,22 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
                     }
                     $si->close();
                 }
+
+                // Replace Milestones
+                $milestonesTable = t('milestones');
+                $delM = $conn->prepare("DELETE FROM `{$milestonesTable}` WHERE invoice_id=?");
+                $delM->bind_param("i", $id); $delM->execute(); $delM->close();
+                if (!empty($data['milestones'])) {
+                    $siM = $conn->prepare("INSERT INTO `{$milestonesTable}` (invoice_id, description, percentage, amount, status) VALUES (?,?,?,?,?)");
+                    foreach ($data['milestones'] as $m) {
+                        $desc = $m['description']; $perc = (float)$m['percentage'];
+                        $amt = (float)$m['amount']; $stat = $m['status'] ?? 'Pending';
+                        $siM->bind_param("isdds", $id, $desc, $perc, $amt, $stat);
+                        $siM->execute();
+                    }
+                    $siM->close();
+                }
+
                 $conn->commit();
                 echo json_encode(['status' => 'success', 'message' => 'Invoice updated', 'public_token' => $finalToken]);
             } catch (Exception $e) {
@@ -192,10 +333,10 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
             }
 
             $si = $conn->prepare("
-                INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, is_recurring, recurrence_period, next_generation_date, recurrence_status, auto_send, public_token)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO `{$invoicesTable}` (user_id, client_id, invoice_number, status, template, issue_date, due_date, subtotal, tax_total, grand_total, notes, is_recurring, recurrence_period, next_generation_date, recurrence_status, auto_send, public_token, type, client_notes)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ");
-            $status = 'Draft';
+            $status = $data['status'] ?? 'Draft';
             $template = $data['template'] ?? 'minimal';
             $is_rec = !empty($data['is_recurring']) ? 1 : 0;
             $rec_per = $data['recurrence_period'] ?? 'none';
@@ -203,12 +344,15 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
             $rec_stat = $data['recurrence_status'] ?? 'active';
             $auto_send = !empty($data['auto_send']) ? 1 : 0;
             $token = bin2hex(random_bytes(32));
+            $doc_type = $data['type'] ?? 'Invoice';
+            $client_notes = $data['client_notes'] ?? null;
 
-            $si->bind_param("iisssssdddsisssis",
+            $si->bind_param("iisssssdddsisssisss",
                 $user_id, $client_id, $data['invoice_number'], $status, $template,
                 $data['issue_date'], $data['due_date'],
                 $data['subtotal'], $data['tax_total'], $data['grand_total'], $data['notes'],
-                $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send, $token
+                $is_rec, $rec_per, $next_gen, $rec_stat, $auto_send, $token,
+                $doc_type, $client_notes
             );
             $si->execute(); $invoice_id = $conn->insert_id; $si->close();
 
@@ -224,12 +368,27 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
                 }
                 $sit->close();
             }
+
+            // Save Milestones
+            if (!empty($data['milestones'])) {
+                $milestonesTable = t('milestones');
+                $siM = $conn->prepare("INSERT INTO `{$milestonesTable}` (invoice_id, description, percentage, amount, status) VALUES (?,?,?,?,?)");
+                foreach ($data['milestones'] as $m) {
+                    $desc = $m['description']; $perc = (float)$m['percentage'];
+                    $amt = (float)$m['amount']; $stat = $m['status'] ?? 'Pending';
+                    $siM->bind_param("isdds", $invoice_id, $desc, $perc, $amt, $stat);
+                    $siM->execute();
+                }
+                $siM->close();
+            }
+
             $conn->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Invoice saved', 'invoice_id' => $invoice_id, 'public_token' => $token]);
+            echo json_encode(['status' => 'success', 'message' => 'Document saved', 'invoice_id' => $invoice_id, 'public_token' => $token]);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+        exit;
     }
 }
 

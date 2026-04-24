@@ -413,15 +413,81 @@
   100% { background-position: -100% 0; }
 }
 
-@media (max-width: 1200px) {
-  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+/* --- Proposal Pipeline --- */
+.pipelineGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
 }
 
-@media (max-width: 900px) {
-  .bottomRow { grid-template-columns: 1fr; }
-  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+.pipelineCard {
+  background: var(--panel-bg);
+  backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.2s;
 }
 
-@media (max-width: 540px) {
-  .statsGrid { grid-template-columns: 1fr; }
+.pipelineCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pipelineHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pipelineValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.viewAllLink {
+  font-size: 13px;
+  color: var(--primary-color);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.viewAllLink:hover {
+  text-decoration: underline;
+}
+
+.statIconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1100px) {
+  .pipelineGrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .pipelineGrid { grid-template-columns: repeat(2, 1fr); }
 }

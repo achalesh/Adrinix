@@ -106,7 +106,9 @@ function ensureTenantSchema($conn, $company_id)
         'payment_method' => "VARCHAR(50) DEFAULT NULL",
         'payment_date' => "DATE DEFAULT NULL",
         'type' => "ENUM('Invoice', 'Quotation') DEFAULT 'Invoice'",
-        'client_notes' => "TEXT DEFAULT NULL"
+        'client_notes' => "TEXT DEFAULT NULL",
+        'signature' => "LONGTEXT DEFAULT NULL",
+        'parent_invoice_id' => "INT DEFAULT NULL"
     ];
 
     foreach ($required_columns as $col => $definition) {
@@ -118,6 +120,25 @@ function ensureTenantSchema($conn, $company_id)
         } catch (Exception $e) {
             error_log("Migration column $col failed: " . $e->getMessage());
         }
+    }
+
+    // --- Create Milestones Table ---
+    try {
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `{$prefix}milestones` (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                invoice_id INT NOT NULL,
+                description TEXT NOT NULL,
+                percentage DECIMAL(5,2) NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                status ENUM('Pending', 'Invoiced') DEFAULT 'Pending',
+                generated_invoice_id INT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (invoice_id) REFERENCES `{$prefix}invoices`(id) ON DELETE CASCADE
+            )
+        ");
+    } catch (Exception $e) {
+        error_log("Milestones table creation failed: " . $e->getMessage());
     }
 
     // Client Table Migrations

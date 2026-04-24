@@ -23,7 +23,13 @@ interface DashStats {
   overdue_count: number;
   sent_count: number;
   total_clients: number;
-  quotation_count: number;
+  total_quotations: number;
+  quote_draft_count: number;
+  quote_sent_count: number;
+  quote_accepted_count: number;
+  quote_declined_count: number;
+  quote_pipeline_value: number;
+  quote_won_value: number;
 }
 
 interface RecentInvoice {
@@ -73,10 +79,19 @@ function StatusBadge({ status }: { status: string }) {
     Draft: Clock,
     Overdue: AlertCircle,
     Sent: TrendingUp,
+    Accepted: CheckCircle,
+    Declined: AlertCircle,
   }[status] ?? Clock;
 
+  const getStatusColor = (s: string) => {
+    if (s === 'Accepted' || s === 'Paid') return '#10b981';
+    if (s === 'Declined' || s === 'Overdue') return '#ef4444';
+    if (s === 'Sent') return '#6366f1';
+    return 'rgba(255,255,255,0.4)';
+  };
+
   return (
-    <span className={`${styles.badge} ${cls}`}>
+    <span className={`${styles.badge} ${cls}`} style={{ borderColor: getStatusColor(status), color: getStatusColor(status) }}>
       <Icon size={9} />
       {status}
     </span>
@@ -135,15 +150,19 @@ export const Dashboard: React.FC = () => {
       total_invoices: 24,
       total_revenue: 128450,
       paid_revenue: 96340,
-      draft_revenue: 18200,
       overdue_revenue: 13910,
       paid_count: 17,
-      draft_count: 5,
       overdue_count: 2,
       sent_count: 3,
       sent_revenue: 9500,
       total_clients: 11,
-      quotation_count: 4,
+      total_quotations: 8,
+      quote_draft_count: 2,
+      quote_sent_count: 3,
+      quote_accepted_count: 2,
+      quote_declined_count: 1,
+      quote_pipeline_value: 12500,
+      quote_won_value: 8400
     });
     setRecent([
       { id: 1, invoice_number: 'INV-0024', client_name: 'Vertex Corp', status: 'Paid',    issue_date: '2026-04-15', due_date: '2026-04-30', grand_total: 8750, type: 'Invoice' },
@@ -186,9 +205,9 @@ export const Dashboard: React.FC = () => {
         },
         {
           label: 'Quotations',
-          value: stats.quotation_count || 0,
-          sub: 'Active proposals',
-          subClass: styles.statSubAmber,
+          value: stats.total_quotations || 0,
+          sub: `${stats.quote_accepted_count || 0} proposals won`,
+          subClass: styles.statSubGreen,
           icon: FileText,
           accent: '#818cf8',
         },
@@ -266,25 +285,70 @@ export const Dashboard: React.FC = () => {
                 <div className={styles.shimmer} style={{ width: '50%', height: 14 }} />
               </div>
             ))
-          : statCards.map((card, i) => (
+          : statCards.map((card, idx) => (
               <Link
-                key={i}
+                key={idx}
                 to={card.label === 'Quotations' ? '/quotations' : '/invoices'}
                 className={styles.statCard}
-                style={{ '--card-accent': card.accent } as React.CSSProperties}
+                style={{ '--accent': card.accent } as any}
               >
-                <div className={styles.statCardTop}>
-                  <span className={styles.statLabel}>{card.label}</span>
-                  <div className={styles.statIconBox}>
-                    <card.icon size={18} />
-                  </div>
+                <div className={styles.statIconWrap}>
+                  <card.icon size={20} />
                 </div>
-                <div className={styles.statValue}>{card.value}</div>
-                <div className={`${styles.statSub} ${card.subClass}`}>{card.sub}</div>
+                <div className={styles.statContent}>
+                  <p className={styles.statLabel}>{card.label}</p>
+                  <h3 className={styles.statValue}>{card.value}</h3>
+                  <p className={`${styles.statSub} ${card.subClass}`}>{card.sub}</p>
+                </div>
               </Link>
-            ))
-        }
+            ))}
       </div>
+
+      {/* Proposal Pipeline Section */}
+      <section style={{ marginTop: 40 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Proposal Pipeline</h2>
+          <Link to="/quotations" className={styles.viewAllLink}>View All Proposals <ArrowRight size={14} /></Link>
+        </div>
+        
+        <div className={styles.pipelineGrid}>
+           <div className={styles.pipelineCard}>
+              <div className={styles.pipelineHeader}>
+                <Clock size={16} color="rgba(255,255,255,0.4)" />
+                <span>Drafts</span>
+              </div>
+              <div className={styles.pipelineValue}>{stats?.quote_draft_count || 0}</div>
+           </div>
+           <div className={styles.pipelineCard}>
+              <div className={styles.pipelineHeader}>
+                <TrendingUp size={16} color="#6366f1" />
+                <span>Sent</span>
+              </div>
+              <div className={styles.pipelineValue}>{stats?.quote_sent_count || 0}</div>
+           </div>
+           <div className={styles.pipelineCard}>
+              <div className={styles.pipelineHeader}>
+                <CheckCircle size={16} color="#10b981" />
+                <span>Accepted</span>
+              </div>
+              <div className={styles.pipelineValue} style={{ color: '#10b981' }}>{stats?.quote_accepted_count || 0}</div>
+           </div>
+           <div className={styles.pipelineCard}>
+              <div className={styles.pipelineHeader}>
+                <AlertCircle size={16} color="#ef4444" />
+                <span>Declined</span>
+              </div>
+              <div className={styles.pipelineValue} style={{ color: '#ef4444' }}>{stats?.quote_declined_count || 0}</div>
+           </div>
+           <div className={styles.pipelineCard} style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+              <div className={styles.pipelineHeader}>
+                <DollarSign size={16} color="#818cf8" />
+                <span>Pipeline Value</span>
+              </div>
+              <div className={styles.pipelineValue} style={{ fontSize: '1.4rem' }}>{fmtCurrency(stats?.quote_pipeline_value || 0, currCode)}</div>
+           </div>
+        </div>
+      </section>
 
       {/* ── Bottom Row ── */}
       <div className={styles.bottomRow}>

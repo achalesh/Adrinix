@@ -15,7 +15,7 @@ interface Quotation {
   id: number;
   invoice_number: string;
   client_name: string;
-  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Accepted' | 'Declined';
   issue_date: string;
   due_date: string;
   grand_total: number;
@@ -24,14 +24,27 @@ interface Quotation {
   type: 'Invoice' | 'Quotation';
 }
 
-const STATUS_LIST = ['All', 'Draft', 'Sent'] as const;
+const STATUS_LIST = ['All', 'Draft', 'Sent', 'Accepted', 'Declined'] as const;
 
 function Badge({ status }: { status: string }) {
   const cls = {
-    Draft: styles.badgeDraft, Sent: styles.badgeSent,
-    Paid: styles.badgePaid, Overdue: styles.badgeOverdue,
+    Draft: styles.badgeDraft, 
+    Sent: styles.badgeSent,
+    Paid: styles.badgePaid, 
+    Overdue: styles.badgeOverdue,
+    Accepted: styles.badgePaid, // Reuse green for accepted
+    Declined: styles.badgeOverdue, // Reuse red for declined
   }[status] ?? styles.badgeDraft;
-  const Icon = { Paid: CheckCircle, Draft: Clock, Overdue: AlertCircle, Sent: Send }[status] ?? Clock;
+  
+  const Icon = { 
+    Paid: CheckCircle, 
+    Accepted: FileCheck,
+    Draft: Clock, 
+    Overdue: AlertCircle, 
+    Declined: X,
+    Sent: Send 
+  }[status] ?? Clock;
+  
   return <span className={`${styles.badge} ${cls}`}><Icon size={9} />{status}</span>;
 }
 
@@ -83,6 +96,27 @@ export const QuotationList: React.FC = () => {
       showToast('Quotation deleted successfully', 'info');
     } catch {
       showToast('Deletion failed', 'error');
+    }
+  };
+
+  const handleConvertToInvoice = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Convert this quotation to a formal invoice?')) return;
+    try {
+      const res = await authFetch(`${API_BASE}/invoices.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'convert_to_invoice', id })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast('Converted to Invoice successfully!', 'success');
+        navigate(`/invoices/${data.invoice_id}`);
+      } else {
+        showToast(data.message || 'Conversion failed', 'error');
+      }
+    } catch {
+      showToast('Network error during conversion', 'error');
     }
   };
 
@@ -199,6 +233,14 @@ export const QuotationList: React.FC = () => {
                       <td><Badge status={inv.status} /></td>
                       <td onClick={e => e.stopPropagation()}>
                         <div className={styles.rowActions}>
+                          <button
+                            className={styles.iconBtn}
+                            style={{ color: 'var(--success-color)' }}
+                            title="Convert to Invoice"
+                            onClick={(e) => handleConvertToInvoice(inv.id, e)}
+                          >
+                            <FileCheck size={14} />
+                          </button>
                           <button
                             className={styles.iconBtn}
                             title="Edit Quotation"
