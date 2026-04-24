@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search, FileCode } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { AdrinixLogo } from './Logo';
@@ -94,6 +94,14 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
         >
           <FileText size={20} />
           <span>Invoices</span>
+        </NavLink>
+        <NavLink 
+          to="/quotations" 
+          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+          onClick={onClose}
+        >
+          <FileCode size={20} />
+          <span>Quotations</span>
         </NavLink>
         <NavLink 
           to="/invoices?filter=Recurring" 

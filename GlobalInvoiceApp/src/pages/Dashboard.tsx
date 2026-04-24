@@ -267,8 +267,9 @@ export const Dashboard: React.FC = () => {
               </div>
             ))
           : statCards.map((card, i) => (
-              <div
+              <Link
                 key={i}
+                to={card.label === 'Quotations' ? '/quotations' : '/invoices'}
                 className={styles.statCard}
                 style={{ '--card-accent': card.accent } as React.CSSProperties}
               >
@@ -280,7 +281,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className={styles.statValue}>{card.value}</div>
                 <div className={`${styles.statSub} ${card.subClass}`}>{card.sub}</div>
-              </div>
+              </Link>
             ))
         }
       </div>
