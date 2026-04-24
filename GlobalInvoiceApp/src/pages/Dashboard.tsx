@@ -323,7 +323,7 @@ export const Dashboard: React.FC = () => {
                     </td></tr>
                   )
                   : recent.map(inv => (
-                    <tr key={inv.id}>
+                    <tr key={inv.id} onClick={() => navigate(inv.type === 'Quotation' ? `/quotations/${inv.id}` : `/invoices/${inv.id}`)}>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span className={styles.invNumber}>{inv.invoice_number}</span>

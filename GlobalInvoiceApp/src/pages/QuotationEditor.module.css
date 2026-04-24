@@ -1,0 +1,267 @@
+.page {
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #1a1a1a;
+  background: #f8fcfb;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+.editorContainer {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 30px;
+}
+
+.quotationCard {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+  padding: 50px;
+  border: 1px solid rgba(69, 139, 110, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.quotationCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #458b6e;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 50px;
+}
+
+.companyInfo h2 {
+  color: #458b6e;
+  font-size: 28px;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.companyInfo p {
+  color: #666;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.metaGrid {
+  text-align: right;
+}
+
+.metaItem {
+  margin-bottom: 8px;
+}
+
+.metaLabel {
+  color: #666;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.metaValue {
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.clientSection {
+  margin-bottom: 40px;
+  padding: 20px;
+  background: #f0faf5;
+  border-radius: 8px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #458b6e;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 30px;
+}
+
+.itemsTable thead th {
+  background: #458b6e;
+  color: #fff;
+  text-align: left;
+  padding: 12px 15px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.itemsTable thead th:first-child { border-top-left-radius: 6px; }
+.itemsTable thead th:last-child { border-top-right-radius: 6px; }
+
+.itemsTable tbody td {
+  padding: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.itemsTable tr:last-child td {
+  border-bottom: none;
+}
+
+.rowEven {
+  background: #f0faf5;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  border-radius: 4px;
+}
+
+.input:focus {
+  background: #fff;
+  border-color: #458b6e;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(69, 139, 110, 0.1);
+}
+
+.totalsSection {
+  margin-left: auto;
+  width: 300px;
+  margin-top: 20px;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.grandTotal {
+  border-top: 2px solid #458b6e;
+  margin-top: 10px;
+  padding-top: 15px;
+  font-weight: 800;
+  font-size: 18px;
+  color: #458b6e;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 50px;
+  padding-top: 30px;
+  border-top: 1px dashed #ccc;
+}
+
+.footerBox {
+  background: #f0faf5;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.footerBox h3 {
+  font-size: 14px;
+  color: #458b6e;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.footerBox p, .footerBox li {
+  font-size: 13px;
+  color: #444;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.actionCard {
+  background: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+.btnSave {
+  width: 100%;
+  background: #458b6e;
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s;
+}
+
+.btnSave:hover {
+  background: #3a755d;
+  transform: translateY(-2px);
+}
+
+.btnCancel {
+  width: 100%;
+  background: #f0f0f0;
+  color: #666;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.removeBtn {
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.removeBtn:hover {
+  opacity: 1;
+}
+
+.addItemBtn {
+  background: none;
+  border: 1px dashed #458b6e;
+  color: #458b6e;
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.addItemBtn:hover {
+  background: #f0faf5;
+}

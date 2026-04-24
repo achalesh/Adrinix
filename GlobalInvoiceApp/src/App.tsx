@@ -16,6 +16,7 @@ const Clients = lazy(() => import('./pages/Clients').then(m => ({ default: m.Cli
 const Products = lazy(() => import('./pages/Products').then(m => ({ default: m.Products })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const QuotationList = lazy(() => import('./pages/QuotationList').then(m => ({ default: m.QuotationList })));
+const QuotationEditor = lazy(() => import('./pages/QuotationEditor').then(m => ({ default: m.QuotationEditor })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const InvoiceViewPage = lazy(() => import('./pages/InvoiceViewPage').then(m => ({ default: m.InvoiceViewPage })));
 const ClientPortal = lazy(() => import('./pages/ClientPortal').then(m => ({ default: m.ClientPortal })));
@@ -115,6 +116,8 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
           <Route path="/quotations" element={<ProtectedRoute><QuotationList /></ProtectedRoute>} />
+          <Route path="/quotations/new" element={<ProtectedRoute><QuotationEditor /></ProtectedRoute>} />
+          <Route path="/quotations/:id" element={<ProtectedRoute><QuotationEditor /></ProtectedRoute>} />
           <Route path="/invoices/new" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
           <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceEditor /></ProtectedRoute>} />
           <Route path="/invoices/view/:id" element={<ProtectedRoute hideSidebar><InvoiceViewPage /></ProtectedRoute>} />

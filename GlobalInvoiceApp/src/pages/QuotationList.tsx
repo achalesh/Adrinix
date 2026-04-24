@@ -129,7 +129,7 @@ export const QuotationList: React.FC = () => {
           <h1 className={styles.title}>Quotations & Proposals</h1>
           <p className={styles.subtitle}>Manage your business proposals and price quotes.</p>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/invoices/new?type=Quotation')}>
+        <button className="btn-primary" onClick={() => navigate('/quotations/new')}>
           <Plus size={17} /> New Quotation
         </button>
       </header>
@@ -186,7 +186,7 @@ export const QuotationList: React.FC = () => {
                       : 'No quotations found. Create your first proposal to get started.'}
                   </td></tr>
                 : filtered.map(inv => (
-                    <tr key={inv.id} onClick={() => navigate(`/invoices/${inv.id}`)}>
+                    <tr key={inv.id} onClick={() => navigate(`/quotations/${inv.id}`)}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className={styles.invNum}>{inv.invoice_number}</span>
@@ -202,7 +202,7 @@ export const QuotationList: React.FC = () => {
                           <button
                             className={styles.iconBtn}
                             title="Edit Quotation"
-                            onClick={() => navigate(`/invoices/${inv.id}`)}
+                            onClick={() => navigate(`/quotations/${inv.id}`)}
                           >
                             <Edit2 size={14} />
                           </button>
