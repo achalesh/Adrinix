@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  DollarSign, FileText, Users, TrendingUp,
-  Plus, ArrowRight, CheckCircle, Clock, AlertCircle
-} from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit, X, Check, DollarSign, Users, TrendingUp, ArrowRight, AlertCircle } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
@@ -162,7 +159,9 @@ export const Dashboard: React.FC = () => {
       quote_accepted_count: 2,
       quote_declined_count: 1,
       quote_pipeline_value: 12500,
-      quote_won_value: 8400
+      quote_won_value: 8400,
+      draft_count: 5,
+      draft_revenue: 18200
     });
     setRecent([
       { id: 1, invoice_number: 'INV-0024', client_name: 'Vertex Corp', status: 'Paid',    issue_date: '2026-04-15', due_date: '2026-04-30', grand_total: 8750, type: 'Invoice' },
@@ -181,7 +180,8 @@ export const Dashboard: React.FC = () => {
     ]);
   };
 
-  const currCode = localization?.currencyCode ?? 'USD';
+  const locStr = localization?.locale || 'en-US';
+  const curStr = localization?.currencyCode || 'USD';
   const maxRevenue = monthly.length ? Math.max(...monthly.map(m => m.revenue)) : 1;
 
   // ── Stat card config ───────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ export const Dashboard: React.FC = () => {
     ? [
         {
           label: 'Total Revenue',
-          value: fmtCurrency(stats.total_revenue, currCode),
+          value: fmtCurrency(stats.total_revenue, curStr, locStr),
           sub: `${stats.total_invoices} invoices total`,
           subClass: '',
           icon: DollarSign,
@@ -197,7 +197,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           label: 'Collected',
-          value: fmtCurrency(stats.paid_revenue, currCode),
+          value: fmtCurrency(stats.paid_revenue, curStr, locStr),
           sub: `${stats.paid_count} invoices paid`,
           subClass: styles.statSubGreen,
           icon: CheckCircle,
@@ -213,7 +213,7 @@ export const Dashboard: React.FC = () => {
         },
         {
           label: 'Awaiting',
-          value: fmtCurrency((stats.overdue_revenue || 0) + (stats.sent_revenue || 0), currCode),
+          value: fmtCurrency((stats.overdue_revenue || 0) + (stats.sent_revenue || 0), curStr, locStr),
           sub: `${(stats.overdue_count || 0) + (stats.sent_count || 0)} open invoices`,
           subClass: styles.statSubAmber,
           icon: Clock,
@@ -345,7 +345,7 @@ export const Dashboard: React.FC = () => {
                 <DollarSign size={16} color="#818cf8" />
                 <span>Pipeline Value</span>
               </div>
-              <div className={styles.pipelineValue} style={{ fontSize: '1.4rem' }}>{fmtCurrency(stats?.quote_pipeline_value || 0, currCode)}</div>
+              <div className={styles.pipelineValue} style={{ fontSize: '1.4rem' }}>{fmtCurrency(stats?.quote_pipeline_value || 0, curStr, locStr)}</div>
            </div>
         </div>
       </section>
@@ -398,7 +398,7 @@ export const Dashboard: React.FC = () => {
                       </td>
                       <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
                       <td><span className={styles.invDate}>{fmtDate(inv.issue_date)}</span></td>
-                      <td><span className={styles.amount}>{fmtCurrency(inv.grand_total, currCode)}</span></td>
+                      <td><span className={styles.amount}>{fmtCurrency(inv.grand_total, curStr, locStr)}</span></td>
                       <td><StatusBadge status={inv.status} /></td>
                     </tr>
                   ))
@@ -422,7 +422,7 @@ export const Dashboard: React.FC = () => {
                   {monthly.map((m, i) => {
                     const pct = maxRevenue > 0 ? (m.revenue / maxRevenue) * 100 : 0;
                     return (
-                      <div key={i} className={styles.chartBarWrap} title={`${m.month_label}: ${fmtCurrency(m.revenue, currCode)}`}>
+                      <div key={i} className={styles.chartBarWrap} title={`${m.month_label}: ${fmtCurrency(m.revenue, curStr, locStr)}`}>
                         <div
                           className={styles.chartBar}
                           style={{ height: `${Math.max(pct, 4)}%` }}

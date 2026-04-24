@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit, X, Check } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
 import { formatCurrency } from '../utils/currency';
 import { API_BASE } from '../config/api';
 import styles from './QuotationEditor.module.css';
-import { X, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 interface QuotationItem {
   id: string;
@@ -181,6 +181,10 @@ export const QuotationEditor = () => {
     if (items.length > 1) setItems(items.filter(i => i.id !== id));
   };
 
+  const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0), [items]);
+  const tax = subtotal * 0.1; // Default 10% tax
+  const grandTotal = subtotal + tax;
+
   const loc = localization?.locale || 'en-US';
   const cur = localization?.currencyCode || 'USD';
 
@@ -298,8 +302,7 @@ export const QuotationEditor = () => {
 
   if (isLoading) return <div className={styles.page}>Loading Quotation...</div>;
 
-  const cur = localization?.currencyCode || 'USD';
-  const loc = localization?.locale || 'en-US';
+
 
   return (
     <div className={styles.page}>
@@ -530,7 +533,7 @@ export const QuotationEditor = () => {
                 disabled={isSaving}
                 style={{ background: 'var(--success-color)', marginTop: 12, fontSize: 13, height: 44 }}
               >
-                {isSaving ? 'Processing...' : <><FileCheck size={18} /> Convert to Invoice</>}
+                {isSaving ? 'Processing...' : <><Check size={18} /> Convert to Invoice</>}
               </button>
             )}
             

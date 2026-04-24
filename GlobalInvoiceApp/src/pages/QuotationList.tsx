@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Plus, Edit2, Trash2, Search,
-  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2, MessageCircle, FileCheck, FileCode
+  CheckCircle, Clock, AlertCircle, Send, Download, RefreshCw, Share2, MessageCircle, FileCheck, FileCode, X
 } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
