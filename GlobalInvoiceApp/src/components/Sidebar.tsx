@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search, FileCode } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search, FileCode, HelpCircle } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { AdrinixLogo } from './Logo';
@@ -134,6 +134,14 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
         >
           <Settings size={20} />
           <span>Settings</span>
+        </NavLink>
+        <NavLink 
+          to="/help" 
+          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+          onClick={onClose}
+        >
+          <HelpCircle size={20} />
+          <span>Help Center</span>
         </NavLink>
         
         <button onClick={logout} className={`${styles.link} ${styles.logoutBtn}`} style={{ border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', marginTop: '20px' }}>
