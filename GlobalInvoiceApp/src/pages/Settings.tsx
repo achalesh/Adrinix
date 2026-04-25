@@ -437,6 +437,7 @@ export const Settings = () => {
                   <select className="input-field" value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})}>
                     <option value="Admin">Admin</option>
                     <option value="Editor">Editor (Create Invoices)</option>
+                    <option value="Finance">Finance (Manage all, no settings)</option>
                     <option value="Viewer">Viewer (Read-only)</option>
                   </select>
                 </div>

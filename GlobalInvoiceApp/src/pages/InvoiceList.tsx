@@ -43,7 +43,7 @@ function fmtDate(d: string) {
 export const InvoiceList: React.FC = () => {
   const navigate = useNavigate();
   const { localization } = useSettingsStore();
-  const { activeCompanyId } = useAuthStore();
+  const { activeCompanyId, user } = useAuthStore();
   const { showToast } = useToastStore();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -215,9 +215,11 @@ export const InvoiceList: React.FC = () => {
           <h1 className={styles.title}>Invoices</h1>
           <p className={styles.subtitle}>View, edit, and manage all your invoices.</p>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/invoices/new')}>
-          <Plus size={17} /> New Invoice
-        </button>
+        {user?.role !== 'Viewer' && (
+          <button className="btn-primary" onClick={() => navigate('/invoices/new')}>
+            <Plus size={17} /> New Invoice
+          </button>
+        )}
       </header>
 
       {/* Stats */}
@@ -305,17 +307,21 @@ export const InvoiceList: React.FC = () => {
                       <td onClick={e => e.stopPropagation()}>
                         {/* Inline status change */}
                         <div className={`${styles.badge} ${styles['badge' + inv.status]}`}>
-                          <select
-                            className={styles.statusSelect}
-                            value={inv.status}
-                            onChange={e => handleStatusChange(inv.id, e.target.value, e)}
-                            style={{ background: 'transparent', color: 'inherit' }}
-                          >
-                            <option value="Draft">Draft</option>
-                            <option value="Sent">Sent</option>
-                            <option value="Paid">Paid</option>
-                            <option value="Overdue">Overdue</option>
-                          </select>
+                          {user?.role !== 'Viewer' ? (
+                            <select
+                              className={styles.statusSelect}
+                              value={inv.status}
+                              onChange={e => handleStatusChange(inv.id, e.target.value, e)}
+                              style={{ background: 'transparent', color: 'inherit' }}
+                            >
+                              <option value="Draft">Draft</option>
+                              <option value="Sent">Sent</option>
+                              <option value="Paid">Paid</option>
+                              <option value="Overdue">Overdue</option>
+                            </select>
+                          ) : (
+                            <span style={{ padding: '0 8px' }}>{inv.status}</span>
+                          )}
                         </div>
                       </td>
                       <td onClick={e => e.stopPropagation()}>
@@ -362,13 +368,15 @@ export const InvoiceList: React.FC = () => {
                           >
                             <MessageCircle size={14} />
                           </button>
-                          <button
-                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                            title="Delete Invoice"
-                            onClick={e => handleDelete(inv.id, e)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {user?.role !== 'Viewer' && (
+                            <button
+                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                              title="Delete Invoice"
+                              onClick={e => handleDelete(inv.id, e)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

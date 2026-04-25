@@ -23,7 +23,7 @@ interface Client {
 
 export const Clients = () => {
   const navigate = useNavigate();
-  const { activeCompanyId } = useAuthStore();
+  const { activeCompanyId, user } = useAuthStore();
   const { showToast } = useToastStore();
   const { localization } = useSettingsStore();
   const [clients, setClients] = useState<Client[]>([]);
@@ -133,9 +133,11 @@ export const Clients = () => {
           <h1 className={styles.title}>Client Directory</h1>
           <p className={styles.subtitle}>Manage your business contacts, billing addresses, and tax records.</p>
         </div>
-        <button className="btn-primary" onClick={openNewClient}>
-          <Plus size={18} /> New Client
-        </button>
+        {user?.role !== 'Viewer' && (
+          <button className="btn-primary" onClick={openNewClient}>
+            <Plus size={18} /> New Client
+          </button>
+        )}
       </header>
 
       {/* Stats Cards */}
@@ -235,12 +237,16 @@ export const Clients = () => {
                       >
                         <BookOpen size={16} />
                       </button>
-                      <button className={styles.iconBtn} onClick={() => { setEditingClient(client); setIsModalOpen(true); }} title="Edit Client">
-                        <Edit2 size={16} />
-                      </button>
-                      <button className={styles.iconBtnDanger} onClick={() => handleDelete(client.id)} title="Delete Client">
-                        <Trash2 size={16} />
-                      </button>
+                      {user?.role !== 'Viewer' && (
+                        <>
+                          <button className={styles.iconBtn} onClick={() => { setEditingClient(client); setIsModalOpen(true); }} title="Edit Client">
+                            <Edit2 size={16} />
+                          </button>
+                          <button className={styles.iconBtnDanger} onClick={() => handleDelete(client.id)} title="Delete Client">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

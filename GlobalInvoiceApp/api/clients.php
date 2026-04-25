@@ -36,6 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
+
+    // ENFORCE RBAC: Viewers cannot modify data
+    if (isset($authUser['role']) && $authUser['role'] === 'Viewer') {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Viewers cannot modify data.']);
+        exit;
+    }
     
     if (isset($data['action']) && $data['action'] === 'delete') {
         // Delete Client

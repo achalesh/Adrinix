@@ -8,7 +8,7 @@ import styles from './Sidebar.module.css';
 
 export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ isOpen, onClose }) => {
   const { company, companies, fetchCompanies, fetchSettings } = useSettingsStore();
-  const { logout, setActiveCompanyId, activeCompanyId } = useAuthStore();
+  const { logout, setActiveCompanyId, activeCompanyId, user } = useAuthStore();
   const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -63,16 +63,18 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
                 </div>
               ))}
               <div className={styles.dropdownDivider} />
-              <button 
-                className={styles.dropdownAction}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.location.href = '/settings';
-                }}
-              >
-                <Settings size={14} />
-                <span>Manage Companies</span>
-              </button>
+              {(user?.role === 'Owner' || user?.role === 'Admin') && (
+                <button 
+                  className={styles.dropdownAction}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.location.href = '/settings';
+                  }}
+                >
+                  <Settings size={14} />
+                  <span>Manage Companies</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -127,14 +129,16 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
           <ShoppingBag size={20} />
           <span>Products</span>
         </NavLink>
-        <NavLink 
-          to="/settings" 
-          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
-          onClick={onClose}
-        >
-          <Settings size={20} />
-          <span>Settings</span>
-        </NavLink>
+        {(user?.role === 'Owner' || user?.role === 'Admin') && (
+          <NavLink 
+            to="/settings" 
+            className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+            onClick={onClose}
+          >
+            <Settings size={20} />
+            <span>Settings</span>
+          </NavLink>
+        )}
         <NavLink 
           to="/help" 
           className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}

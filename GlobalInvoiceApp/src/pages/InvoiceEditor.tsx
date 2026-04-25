@@ -32,7 +32,7 @@ export const InvoiceEditor = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(invoiceId);
   const { localization, taxProfiles, fetchSettings } = useSettingsStore();
-  const { activeCompanyId } = useAuthStore();
+  const { activeCompanyId, user } = useAuthStore();
   const { showToast } = useToastStore();
 
   useEffect(() => { fetchSettings(); }, [fetchSettings, activeCompanyId]);
@@ -705,13 +705,17 @@ export const InvoiceEditor = () => {
             <ExternalLink size={16} /> Preview
           </button>
           
-          <button className="btn-secondary" onClick={handleShareLink} title="Copy shareable client portal link">
-            <Share2 size={16} /> Share Link
-          </button>
+          {user?.role !== 'Viewer' && (
+            <>
+              <button className="btn-secondary" onClick={handleShareLink} title="Copy shareable client portal link">
+                <Share2 size={16} /> Share Link
+              </button>
 
-          <button className="btn-secondary" onClick={handleWhatsappShare} title="Share via WhatsApp">
-            <MessageCircle size={16} /> WhatsApp
-          </button>
+              <button className="btn-secondary" onClick={handleWhatsappShare} title="Share via WhatsApp">
+                <MessageCircle size={16} /> WhatsApp
+              </button>
+            </>
+          )}
 
           {/* PDF Download Button */}
           <button
@@ -722,12 +726,16 @@ export const InvoiceEditor = () => {
             <Download size={16} /> {isExporting ? 'Generating...' : 'Export PDF'}
           </button>
 
-          <button className="btn-secondary" onClick={openEmailModal}>
-            <Send size={16} /> Send Email
-          </button>
-          <button className="btn-primary" onClick={handleSaveInvoice} disabled={isSaving}>
-            <Save size={16} /> {isSaving ? 'Saving...' : isEditMode ? 'Update Invoice' : 'Save Draft'}
-          </button>
+          {user?.role !== 'Viewer' && (
+            <>
+              <button className="btn-secondary" onClick={openEmailModal}>
+                <Send size={16} /> Send Email
+              </button>
+              <button className="btn-primary" onClick={handleSaveInvoice} disabled={isSaving}>
+                <Save size={16} /> {isSaving ? 'Saving...' : isEditMode ? 'Update Invoice' : 'Save Draft'}
+              </button>
+            </>
+          )}
         </div>
       </header>
 

@@ -4,7 +4,7 @@ require_once 'db.php';
 
 // Auth and Company check moved into the handler block below
 
-function handleInvoicesRequest($conn, $user_id, $company_id) {
+function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
     global $t_prefix;
     $invoicesTable = t('invoices');
     $clientsTable = t('clients');
@@ -46,6 +46,13 @@ function handleInvoicesRequest($conn, $user_id, $company_id) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
         if (!$data) { echo json_encode(['status' => 'error', 'message' => 'Invalid data']); exit; }
+
+        // ENFORCE RBAC: Viewers cannot modify data
+        if (isset($authUser['role']) && $authUser['role'] === 'Viewer') {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Viewers cannot modify data.']);
+            exit;
+        }
 
         $action = $data['action'] ?? 'create';
 
@@ -398,7 +405,7 @@ if (basename($_SERVER['PHP_SELF']) == 'invoices.php') {
     $user_id = $authUser['user_id'];
     $company = requireCompany($user_id);
     $company_id = $company['id'];
-    handleInvoicesRequest($conn, $user_id, $company_id);
+    handleInvoicesRequest($conn, $user_id, $company_id, $authUser);
 }
 
 function processRecurringInvoices($conn, $user_id) {

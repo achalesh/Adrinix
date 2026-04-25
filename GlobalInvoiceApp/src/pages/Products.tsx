@@ -32,7 +32,7 @@ const emptyProduct = (): Partial<Product> => ({
 
 export const Products: React.FC = () => {
   const { taxProfiles, localization } = useSettingsStore();
-  const { activeCompanyId } = useAuthStore();
+  const { activeCompanyId, user } = useAuthStore();
   const { showToast } = useToastStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,9 +129,11 @@ export const Products: React.FC = () => {
           <h1 className={styles.title}>Products & Services</h1>
           <p className={styles.subtitle}>Manage your catalog — pick items directly when creating invoices.</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>
-          <Plus size={17} /> Add Product
-        </button>
+        {user?.role !== 'Viewer' && (
+          <button className="btn-primary" onClick={openNew}>
+            <Plus size={17} /> Add Product
+          </button>
+        )}
       </header>
 
       {/* Mini stats */}
@@ -192,7 +194,7 @@ export const Products: React.FC = () => {
                 <p style={{ fontSize: 14 }}>
                   {search || filterCat ? 'Try clearing your search.' : 'Click "Add Product" to build your catalog.'}
                 </p>
-                {!search && !filterCat && (
+                {!search && !filterCat && user?.role !== 'Viewer' && (
                   <button className="btn-primary" onClick={openNew}><Plus size={16} /> Add First Product</button>
                 )}
               </div>
@@ -221,18 +223,20 @@ export const Products: React.FC = () => {
                   {!p.is_active && <span className={styles.unitPill}>Inactive</span>}
                 </div>
 
-                <div className={styles.cardActions}>
-                  <button className={styles.iconBtn} onClick={() => openEdit(p)} title="Edit">
-                    <Edit2 size={14} /> Edit
-                  </button>
-                  <button className={styles.iconBtn} onClick={() => handleToggle(p.id)} title="Toggle Active">
-                    {p.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                    {p.is_active ? 'Disable' : 'Enable'}
-                  </button>
-                  <button className={`${styles.iconBtn} ${styles.iconBtnDanger}`} onClick={() => handleDelete(p.id)} title="Delete">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                {user?.role !== 'Viewer' && (
+                  <div className={styles.cardActions}>
+                    <button className={styles.iconBtn} onClick={() => openEdit(p)} title="Edit">
+                      <Edit2 size={14} /> Edit
+                    </button>
+                    <button className={styles.iconBtn} onClick={() => handleToggle(p.id)} title="Toggle Active">
+                      {p.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                      {p.is_active ? 'Disable' : 'Enable'}
+                    </button>
+                    <button className={`${styles.iconBtn} ${styles.iconBtnDanger}`} onClick={() => handleDelete(p.id)} title="Delete">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))
         }

@@ -191,6 +191,12 @@
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
+.roleBadge[data-role="Finance"] {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
 /* Multi-Company Portfolio Styles */
 .companyGrid {
   display: grid;

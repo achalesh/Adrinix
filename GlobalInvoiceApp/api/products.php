@@ -38,6 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ENFORCE RBAC: Viewers cannot modify data
+    if (isset($authUser['role']) && $authUser['role'] === 'Viewer') {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Viewers cannot modify data.']);
+        exit;
+    }
+
     $action = $data['action'] ?? 'create';
 
     // ── DELETE ──────────────────────────────────────────────────

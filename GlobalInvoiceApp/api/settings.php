@@ -71,6 +71,13 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     if (!$data) { echo json_encode(['status' => 'error', 'message' => 'Invalid data']); exit; }
 
+    // ENFORCE RBAC: Only Owner and Admin can modify settings
+    if (isset($authUser['role']) && !in_array($authUser['role'], ['Owner', 'Admin'])) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized: Only Admins can modify settings.']);
+        exit;
+    }
+
     $action = $data['action'] ?? 'update';
 
     if ($action === 'create') {

@@ -33,7 +33,7 @@ export const QuotationEditor = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(id);
   const { company, localization, fetchSettings } = useSettingsStore();
-  const { activeCompanyId } = useAuthStore();
+  const { activeCompanyId, user } = useAuthStore();
   const { showToast } = useToastStore();
 
   const [isLoading, setIsLoading] = useState(isEditMode);
@@ -522,19 +522,23 @@ export const QuotationEditor = () => {
         <div className={styles.sidebar}>
           <div className={styles.actionCard}>
             <span className={styles.sectionTitle}>Publishing</span>
-            <button className={styles.btnSave} onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : <><Save size={20} /> Save Proposal</>}
-            </button>
+            {user?.role !== 'Viewer' && (
+              <>
+                <button className={styles.btnSave} onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : <><Save size={20} /> Save Proposal</>}
+                </button>
 
-            {isEditMode && (
-              <button 
-                className={styles.btnSave} 
-                onClick={handleConvert} 
-                disabled={isSaving}
-                style={{ background: 'var(--success-color)', marginTop: 12, fontSize: 13, height: 44 }}
-              >
-                {isSaving ? 'Processing...' : <><Check size={18} /> Convert to Invoice</>}
-              </button>
+                {isEditMode && (
+                  <button 
+                    className={styles.btnSave} 
+                    onClick={handleConvert} 
+                    disabled={isSaving}
+                    style={{ background: 'var(--success-color)', marginTop: 12, fontSize: 13, height: 44 }}
+                  >
+                    {isSaving ? 'Processing...' : <><Check size={18} /> Convert to Invoice</>}
+                  </button>
+                )}
+              </>
             )}
             
             <div style={{ marginTop: 24 }}>
