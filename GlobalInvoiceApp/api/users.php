@@ -13,12 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $authUser['role'] !== 'Owner' && $a
     exit();
 }
 
-$teamTable = t('team_members');
+$teamTable = 'team_members';
+$company_id = $company['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // List all team members for this tenant
-    $stmt = $conn->prepare("SELECT id, name, email, role, created_at FROM `{$teamTable}` WHERE user_id = ? ORDER BY created_at DESC");
-    $stmt->bind_param("i", $user_id);
+    $stmt = $conn->prepare("SELECT id, name, email, role, created_at FROM `{$teamTable}` WHERE user_id = ? AND company_id = ? ORDER BY created_at DESC");
+    $stmt->bind_param("ii", $user_id, $company_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -35,8 +36,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($data['action']) && $data['action'] === 'delete') {
         // Delete member
         $member_id = $data['id'];
-        $stmt = $conn->prepare("DELETE FROM `{$teamTable}` WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("ii", $member_id, $user_id);
+        $stmt = $conn->prepare("DELETE FROM `{$teamTable}` WHERE id = ? AND user_id = ? AND company_id = ?");
+        $stmt->bind_param("iii", $member_id, $user_id, $company_id);
         
         if($stmt->execute()) {
             echo json_encode(['status' => 'success', 'message' => 'Team member deleted']);
@@ -51,8 +52,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (isset($data['id'])) {
             // Update
-            $stmt = $conn->prepare("UPDATE `{$teamTable}` SET name = ?, email = ?, role = ? WHERE id = ? AND user_id = ?");
-            $stmt->bind_param("sssii", $name, $email, $role, $data['id'], $user_id);
+            $stmt = $conn->prepare("UPDATE `{$teamTable}` SET name = ?, email = ?, role = ? WHERE id = ? AND user_id = ? AND company_id = ?");
+            $stmt->bind_param("sssiii", $name, $email, $role, $data['id'], $user_id, $company_id);
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'Member updated']);
             } else {
@@ -61,8 +62,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Insert
             $password = password_hash($data['password'] ?? 'default123', PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO `{$teamTable}` (user_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("issss", $user_id, $name, $email, $password, $role);
+            $stmt = $conn->prepare("INSERT INTO `{$teamTable}` (user_id, company_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iissss", $user_id, $company_id, $name, $email, $password, $role);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'Team member added']);

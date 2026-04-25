@@ -53,20 +53,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
 
-        // 2. Check team_members table
-        $stmt = $conn->prepare("SELECT id, user_id, password_hash, name, role FROM team_members WHERE email = ?");
+        // 2. Check global team_members table
+        $stmt = $conn->prepare("SELECT id, user_id, company_id, password_hash, name, role FROM team_members WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $res = $stmt->get_result();
 
         if ($member = $res->fetch_assoc()) {
             if (password_verify($password, $member['password_hash'])) {
-                // Member Authentication Success (Inherit parent user_id)
-                $access_token = createJWT(['user_id' => $member['user_id'], 'member_id' => $member['id'], 'role' => $member['role'], 'exp' => time() + 3600], $secret_key);
+                // Member Authentication Success (Inherit parent user_id and specific company_id)
+                $access_token = createJWT([
+                    'user_id' => $member['user_id'], 
+                    'member_id' => $member['id'], 
+                    'company_id' => $member['company_id'], 
+                    'role' => $member['role'], 
+                    'exp' => time() + 3600
+                ], $secret_key);
+                
                 $refresh_token = issueRefreshToken($conn, $member['user_id'], $member['id']);
 
                 echo json_encode(['status' => 'success', 'token' => $access_token, 'refreshToken' => $refresh_token, 'user' => [
-                    'id' => $member['id'], 'name' => $member['name'], 'role' => $member['role']
+                    'id' => $member['id'], 
+                    'name' => $member['name'], 
+                    'role' => $member['role'],
+                    'company_id' => $member['company_id']
                 ]]);
                 exit;
             }

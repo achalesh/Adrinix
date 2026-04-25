@@ -4,28 +4,40 @@ interface User {
   id: number;
   name: string;
   role: string;
+  company_id?: number;
 }
 
 interface AuthState {
   token: string | null;
-  refreshToken: string | null; // Added
+  refreshToken: string | null;
   user: User | null;
   activeCompanyId: string | null;
-  login: (token: string, refreshToken: string, user: User) => void; // Added refreshToken
+  login: (token: string, refreshToken: string, user: User) => void;
   logout: () => void;
   setActiveCompanyId: (id: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: localStorage.getItem('adrinix_token'),
-  refreshToken: localStorage.getItem('adrinix_refresh_token'), // Added
+  refreshToken: localStorage.getItem('adrinix_refresh_token'),
   user: localStorage.getItem('adrinix_user') ? JSON.parse(localStorage.getItem('adrinix_user') as string) : null,
   activeCompanyId: localStorage.getItem('adrinix_company_id'),
   login: (token, refreshToken, user) => {
     localStorage.setItem('adrinix_token', token);
-    localStorage.setItem('adrinix_refresh_token', refreshToken); // Added
+    localStorage.setItem('adrinix_refresh_token', refreshToken);
     localStorage.setItem('adrinix_user', JSON.stringify(user));
-    set({ token, refreshToken, user });
+    
+    // Auto-set company if provided (for team members)
+    if (user.company_id) {
+      localStorage.setItem('adrinix_company_id', user.company_id.toString());
+    }
+
+    set({ 
+      token, 
+      refreshToken, 
+      user, 
+      activeCompanyId: user.company_id ? user.company_id.toString() : localStorage.getItem('adrinix_company_id')
+    });
   },
   logout: () => {
     localStorage.removeItem('adrinix_token');
