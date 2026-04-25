@@ -20,6 +20,17 @@
   .header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 16px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .headerActions {
+    width: 100%;
+  }
+  .headerActions > * {
+    flex: 1;
+    justify-content: center;
   }
 }
 
@@ -52,6 +63,25 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .statCard {
+    padding: 16px 20px;
+  }
+  .statValue {
+    font-size: 24px;
+  }
 }
 
 .statCard {
@@ -135,6 +165,12 @@
   grid-template-columns: 1fr 340px;
   gap: 20px;
   align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .bottomRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Recent Invoices ── */
@@ -489,5 +525,8 @@
 }
 
 @media (max-width: 640px) {
-  .pipelineGrid { grid-template-columns: repeat(2, 1fr); }
+  .pipelineGrid { 
+    grid-template-columns: 1fr; 
+    gap: 12px;
+  }
 }
