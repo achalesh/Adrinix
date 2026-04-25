@@ -105,7 +105,7 @@ function ensureTenantSchema($conn, $company_id)
         $sql = "
         CREATE TABLE IF NOT EXISTS `{$prefix}tax_profiles` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(100) NOT NULL, percentage DECIMAL(5,2) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS `{$prefix}clients` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, email VARCHAR(255), phone VARCHAR(50), billing_address TEXT, shipping_address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-        CREATE TABLE IF NOT EXISTS `{$prefix}products` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, description TEXT, base_price DECIMAL(15,2) NOT NULL, category VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS `{$prefix}products` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, description TEXT, base_price DECIMAL(15,2) NOT NULL, category VARCHAR(100), unit VARCHAR(50) DEFAULT 'item', tax_profile_id INT DEFAULT NULL, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS `{$prefix}invoices` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, client_id INT, invoice_number VARCHAR(50) NOT NULL, status ENUM('Draft', 'Sent', 'Paid', 'Overdue') DEFAULT 'Draft', template VARCHAR(50) DEFAULT 'minimal', issue_date DATE NOT NULL, due_date DATE, subtotal DECIMAL(15,2) NOT NULL, tax_total DECIMAL(15,2) NOT NULL, grand_total DECIMAL(15,2) NOT NULL, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES `{$prefix}clients`(id) ON DELETE SET NULL);
         CREATE TABLE IF NOT EXISTS `{$prefix}invoice_items` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT NOT NULL, quantity INT NOT NULL, unit_price DECIMAL(15,2) NOT NULL, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', tax_profile_id INT DEFAULT NULL, FOREIGN KEY (invoice_id) REFERENCES `{$prefix}invoices`(id) ON DELETE CASCADE);
 
@@ -140,6 +140,28 @@ function ensureTenantSchema($conn, $company_id)
         } catch (Exception $e) {
             error_log("Migration column $col failed: " . $e->getMessage());
         }
+    }
+
+    // Product Table Migrations
+    try {
+        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'tax_profile_id'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN tax_profile_id INT DEFAULT NULL AFTER category");
+        }
+        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'unit'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN unit VARCHAR(50) DEFAULT 'item' AFTER category");
+        }
+        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'tax_method'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive' AFTER tax_profile_id");
+        }
+        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'is_active'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN is_active TINYINT(1) DEFAULT 1 AFTER tax_method");
+        }
+    } catch (Exception $e) {
+        error_log("Product migration failed: " . $e->getMessage());
     }
 
     // --- Create Milestones Table ---

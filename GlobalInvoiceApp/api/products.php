@@ -58,15 +58,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── TOGGLE ACTIVE ───────────────────────────────────────────
+    if ($action === 'toggle') {
+        $id = (int)($data['id'] ?? 0);
+        $stmt = $conn->prepare("UPDATE `{$productsTable}` SET is_active = NOT is_active WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $id, $user_id);
+        $stmt->execute();
+        $stmt->close();
+        echo json_encode(['status' => 'success', 'message' => 'Product status toggled']);
+        exit;
+    }
+
     // ── CREATE or UPDATE ─────────────────────────────────────────
-    $name        = trim($data['name'] ?? '');
-    $description = trim($data['description'] ?? '');
-    $base_price  = (float)($data['unit_price'] ?? 0); // Note: frontend uses unit_price, backend schema uses base_price
-    $category    = trim($data['category'] ?? '');
-    // Wait, the table schema for products in my template was:
-    // name, description, base_price, category
-    // but the existing one had unit_price, unit, tax_profile_id, tax_method.
-    // I will use my NEW schema from ensureTenantSchema.
+    $name           = trim($data['name'] ?? '');
+    $description    = trim($data['description'] ?? '');
+    $base_price     = (float)($data['unit_price'] ?? 0);
+    $category       = trim($data['category'] ?? '');
+    $unit           = trim($data['unit'] ?? 'item');
+    $tax_profile_id = !empty($data['tax_profile_id']) ? (int)$data['tax_profile_id'] : null;
+    $tax_method     = trim($data['tax_method'] ?? 'exclusive');
+    $is_active      = isset($data['is_active']) ? (int)$data['is_active'] : 1;
     
     if (!$name) {
         echo json_encode(['status' => 'error', 'message' => 'Product name is required']);
@@ -78,20 +89,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)$data['id'];
         $stmt = $conn->prepare("
             UPDATE `{$productsTable}`
-            SET name=?, description=?, base_price=?, category=?
+            SET name=?, description=?, base_price=?, category=?, unit=?, tax_profile_id=?, tax_method=?, is_active=?
             WHERE id=? AND user_id=?
         ");
-        $stmt->bind_param("ssdsii", $name, $description, $base_price, $category, $id, $user_id);
+        $stmt->bind_param("ssdssisiii", $name, $description, $base_price, $category, $unit, $tax_profile_id, $tax_method, $is_active, $id, $user_id);
         $stmt->execute();
         $stmt->close();
         echo json_encode(['status' => 'success', 'message' => 'Product updated']);
     } else {
         // CREATE
         $stmt = $conn->prepare("
-            INSERT INTO `{$productsTable}` (user_id, name, description, base_price, category)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO `{$productsTable}` (user_id, name, description, base_price, category, unit, tax_profile_id, tax_method, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("isssd", $user_id, $name, $description, $base_price, $category);
+        $stmt->bind_param("issdssisi", $user_id, $name, $description, $base_price, $category, $unit, $tax_profile_id, $tax_method, $is_active);
         $stmt->execute();
         $new_id = $conn->insert_id;
         $stmt->close();
