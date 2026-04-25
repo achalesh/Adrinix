@@ -1,7 +1,7 @@
 <?php
 // api/db.php
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 /**
@@ -69,11 +69,21 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // ─── GLOBAL SCHEMA SETUP ──────────────────────────────────────────────────
-// Ensure the core authentication tables exist globally
-$conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, company_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-$conn->query("CREATE TABLE IF NOT EXISTS companies (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, country VARCHAR(100), address TEXT, phone VARCHAR(50), email VARCHAR(255), logo LONGTEXT, registrationNumber VARCHAR(100), defaultTemplate VARCHAR(50) DEFAULT 'minimal', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-$conn->query("CREATE TABLE IF NOT EXISTS team_members (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, company_id INT, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, role ENUM('Owner', 'Admin', 'Editor', 'Viewer') DEFAULT 'Viewer', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-$conn->query("CREATE TABLE IF NOT EXISTS refresh_tokens (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, member_id INT DEFAULT NULL, token VARCHAR(255) NOT NULL, expires_at DATETIME NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+try {
+    $conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, company_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS companies (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, country VARCHAR(100), address TEXT, phone VARCHAR(50), email VARCHAR(255), logo LONGTEXT, registrationNumber VARCHAR(100), defaultTemplate VARCHAR(50) DEFAULT 'minimal', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS team_members (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, company_id INT, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, role ENUM('Owner', 'Admin', 'Editor', 'Viewer') DEFAULT 'Viewer', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS refresh_tokens (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, member_id INT DEFAULT NULL, token VARCHAR(255) NOT NULL, expires_at DATETIME NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+    // Robust Migration for global team_members
+    $check = $conn->query("SHOW COLUMNS FROM team_members LIKE 'company_id'");
+    if ($check->num_rows == 0) {
+        $conn->query("ALTER TABLE team_members ADD COLUMN company_id INT AFTER user_id");
+    }
+} catch (Exception $e) {
+    // Log error but don't crash the whole app if table already exists or permission denied
+    error_log("Global Schema Error: " . $e->getMessage());
+}
 
 $t_prefix = "";
 
