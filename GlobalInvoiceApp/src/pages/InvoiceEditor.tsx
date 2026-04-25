@@ -787,8 +787,8 @@ export const InvoiceEditor = () => {
       )}
 
       {/* Document Type Selector */}
-      <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px' }}>
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Document Type</span>
+      <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500, minWidth: '100px' }}>Document Type</span>
         {(['Invoice', 'Quotation'] as const).map(t => (
           <button
             key={t}
@@ -820,8 +820,8 @@ export const InvoiceEditor = () => {
 
       {/* Status selector — edit mode only */}
       {isEditMode && (
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px' }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Invoice Status</span>
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500, minWidth: '100px' }}>Invoice Status</span>
           {(['Draft', 'Sent', 'Paid', 'Overdue'] as const).map(s => (
             <button
               key={s}

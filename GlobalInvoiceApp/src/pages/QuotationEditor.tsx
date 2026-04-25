@@ -306,7 +306,7 @@ export const QuotationEditor = () => {
 
   return (
     <div className={styles.page}>
-      <div style={{ marginBottom: 30, display: 'flex', alignItems: 'center', gap: 15 }}>
+      <div style={{ marginBottom: 30, display: 'flex', alignItems: 'center', gap: 15, flexWrap: 'wrap' }}>
         <button onClick={() => navigate('/quotations')} className={styles.btnCancel} style={{ width: 'auto', margin: 0, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <ArrowLeft size={18} /> Back to List
         </button>
@@ -371,7 +371,7 @@ export const QuotationEditor = () => {
                  <Search size={12} /> Pick Client
                </button>
              </div>
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+             <div className={styles.clientGrid}>
                <div>
                  <label className={styles.metaLabel} style={{ display: 'block', marginBottom: 8 }}>Client Name</label>
                  <input 

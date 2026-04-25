@@ -48,11 +48,28 @@
   .headerActions {
     flex-direction: column;
     align-items: flex-start;
-    padding: 10px 0;
+    padding: 12px 0;
+    gap: 12px;
   }
   .headerActions > div {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+  .headerActions button {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    font-size: 13px;
+    padding: 8px;
+  }
+  .headerActions button svg {
+    width: 14px;
+    height: 14px;
+  }
+  .invoiceMetaGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 

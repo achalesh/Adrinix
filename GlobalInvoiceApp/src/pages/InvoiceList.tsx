@@ -248,7 +248,7 @@ export const InvoiceList: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {STATUS_LIST.map(s => (
             <button
               key={s}
