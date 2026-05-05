@@ -108,10 +108,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  fetchSettings: async () => {
+  fetchSettings: async (companyId?: string) => {
     set({ isLoading: true });
     try {
-      const res = await authFetch(API_URL + '/settings.php');
+      const headers: Record<string, string> = {};
+      if (companyId) headers['X-Company-Id'] = companyId;
+      
+      const res = await authFetch(API_URL + '/settings.php', { headers });
       const data = await res.json();
       
       if (data.status === 'success') {

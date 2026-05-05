@@ -9,6 +9,7 @@ import { Menu, X, WifiOff } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useOfflineStatus } from './hooks/useOfflineStatus';
+import { useThemeStore } from './store/useThemeStore';
 import './index.css';
 
 // Lazy load pages
@@ -57,7 +58,7 @@ const ProtectedRoute = ({ hideSidebar = false }: { hideSidebar?: boolean }) => {
 
   React.useEffect(() => {
     if (init && activeCompanyId) {
-      fetchSettings();
+      fetchSettings(activeCompanyId);
     }
   }, [init, activeCompanyId, fetchSettings]);
 
@@ -152,7 +153,14 @@ const router = createBrowserRouter([
   }
 ]);
 
+
 function App() {
+  const { theme } = useThemeStore();
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   return <RouterProvider router={router} />;
 }
 

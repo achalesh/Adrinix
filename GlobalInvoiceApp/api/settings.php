@@ -7,7 +7,17 @@ $user_id = $authUser['user_id'];
 header("X-Adrinix-Debug: v2-prefixing-active");
 
 $headers = getallheaders();
-$active_company_id = isset($headers['X-Company-Id']) ? (int)$headers['X-Company-Id'] : null;
+$active_company_id = 0;
+foreach ($headers as $key => $val) {
+    if (strcasecmp($key, 'X-Company-Id') === 0) {
+        $active_company_id = (int)$val;
+        break;
+    }
+}
+if (!$active_company_id) {
+    $active_company_id = (int)($_SERVER['HTTP_X_COMPANY_ID'] ?? $_SERVER['X_COMPANY_ID'] ?? 0);
+}
+if (!$active_company_id) $active_company_id = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? 'details';

@@ -278,13 +278,17 @@ function requireCompany($user_id)
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     
     // Robust header detection
-    $company_id = (int) (
-        $headers['X-Company-Id'] ?? 
-        $headers['x-company-id'] ?? 
-        $_SERVER['HTTP_X_COMPANY_ID'] ?? 
-        $_SERVER['HTTP_X_COMPANY_ID'] ?? 
-        0
-    );
+    // Robust case-insensitive header detection
+    $company_id = 0;
+    foreach ($headers as $key => $val) {
+        if (strcasecmp($key, 'X-Company-Id') === 0) {
+            $company_id = (int)$val;
+            break;
+        }
+    }
+    if (!$company_id) {
+        $company_id = (int)($_SERVER['HTTP_X_COMPANY_ID'] ?? $_SERVER['X_COMPANY_ID'] ?? 0);
+    }
 
     if (!$company_id) {
         http_response_code(400);

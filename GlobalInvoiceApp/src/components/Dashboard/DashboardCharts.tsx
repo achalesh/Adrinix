@@ -32,7 +32,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ monthlyRevenue
               <XAxis dataKey="month_label" stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
               <Tooltip 
-                contentStyle={{ background: '#1a1a1a', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px' }}
+                contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-primary)' }}
                 itemStyle={{ color: 'var(--primary-color)' }}
               />
               <Area type="monotone" dataKey="revenue" stroke="var(--primary-color)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
@@ -52,7 +52,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ monthlyRevenue
               <YAxis dataKey="description" type="category" stroke="var(--text-secondary)" fontSize={10} width={100} tickLine={false} axisLine={false} />
               <Tooltip 
                 cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ background: '#1a1a1a', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px' }}
+                contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-primary)' }}
               />
               <Bar dataKey="revenue" fill="var(--primary-color)" radius={[0, 4, 4, 0]} barSize={20} />
             </BarChart>
@@ -78,7 +78,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ monthlyRevenue
                 ))}
               </Pie>
               <Tooltip 
-                 contentStyle={{ background: '#1a1a1a', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px' }}
+                 contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-primary)' }}
               />
             </PieChart>
           </ResponsiveContainer>

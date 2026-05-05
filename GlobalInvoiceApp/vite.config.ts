@@ -55,5 +55,13 @@ export default defineConfig({
         ]
       }
     })
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://adrinix.syscura.co.uk',
+        changeOrigin: true,
+      },
+    },
+  },
 });

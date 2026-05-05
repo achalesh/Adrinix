@@ -18,9 +18,10 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
   }, [fetchCompanies]);
 
   const handleSwitch = (id: number) => {
-    setActiveCompanyId(id.toString());
+    const idStr = id.toString();
+    setActiveCompanyId(idStr);
     setIsSwitcherOpen(false);
-    fetchSettings();
+    fetchSettings(idStr);
   };
 
   return (
@@ -61,7 +62,7 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
                    {c.logo ? (
                      <img src={c.logo} alt="" style={{ width: 24, height: 24, borderRadius: 4 }} />
                    ) : <Building2 size={16} />}
-                   <span className={styles.dropdownItemName}>{c.name}</span>
+                   <span className={styles.dropdownItemName}>{c.name || 'Unnamed Company'}</span>
                 </div>
               ))}
               <div className={styles.dropdownDivider} />

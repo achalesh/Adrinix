@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useBlocker } from 'react-router-dom';
-import { Building2, Globe, Receipt, Plus, Trash2, Save, Users as UsersIcon, Shield, X, CheckCircle, AlertCircle, Palette, Layout, Eye, CreditCard, Database, Cloud, RefreshCw } from 'lucide-react';
+import { Building2, Globe, Receipt, Plus, Trash2, Save, Users as UsersIcon, Shield, X, CheckCircle, AlertCircle, Palette, Layout, Eye, CreditCard, Database, Cloud, RefreshCw, Sun, Moon } from 'lucide-react';
 import { MinimalTemplate } from '../components/MinimalTemplate';
 import { CorporateTemplate } from '../components/CorporateTemplate';
 import { BrandedTemplate } from '../components/BrandedTemplate';
@@ -9,6 +9,7 @@ import { useAuthStore, authFetch } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
 import { COMMON_CURRENCIES } from '../utils/currency';
 import { API_BASE } from '../config/api';
+import { useThemeStore } from '../store/useThemeStore';
 import styles from './Settings.module.css';
 
 interface TeamMember {
@@ -20,6 +21,7 @@ interface TeamMember {
 
 export const Settings = () => {
   const { company, localization, taxProfiles, isLoading, fetchSettings, updateSettings, companies, fetchCompanies } = useSettingsStore();
+  const { theme, setTheme } = useThemeStore();
   
   const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'companies' | 'appearance' | 'payments' | 'backups'>('profile');
 
@@ -299,17 +301,18 @@ export const Settings = () => {
           {companies.map(c => (
             <div key={c.id} className={`${styles.companyCard} ${company.id === c.id ? styles.companyCardActive : ''}`}
               onClick={() => {
-                useAuthStore.getState().setActiveCompanyId(c.id.toString());
-                useSettingsStore.getState().fetchSettings();
+                const idStr = c.id.toString();
+                useAuthStore.getState().setActiveCompanyId(idStr);
+                useSettingsStore.getState().fetchSettings(idStr);
               }}
             >
               <div className={styles.companyCardInner}>
                 {c.logo ? <img src={c.logo} alt="" style={{ width: 40, height: 40, borderRadius: 8 }} /> : <div className={styles.cardDefaultIcon}><Building2 size={20} /></div>}
                 <div style={{ flex: 1 }}>
-                  <div className={styles.cardCompanyName}>{c.name}</div>
+                  <div className={styles.cardCompanyName}>{c.name || 'Unnamed Company'}</div>
                   <div className={styles.cardCompanyCountry}>{c.country}</div>
                 </div>
-                {company.id === c.id && <div className={styles.activeBadge}>Active</div>}
+                {Number(company.id) === Number(c.id) && <div className={styles.activeBadge}>Active</div>}
               </div>
             </div>
           ))}
@@ -322,6 +325,25 @@ export const Settings = () => {
     <div className={styles.fadeTab}>
       <div className="glass-panel">
         <h2 className={styles.sectionTitle}><Palette size={20} /> Document Branding</h2>
+        
+        <div style={{ marginBottom: 30 }}>
+          <label style={{ display: 'block', marginBottom: 15, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>System Theme</label>
+          <div className={styles.themeSwitcher}>
+            <button 
+              className={`${styles.themeBtn} ${theme === 'light' ? styles.themeBtnActive : ''}`}
+              onClick={() => setTheme('light')}
+            >
+              <Sun size={16} /> Light Mode
+            </button>
+            <button 
+              className={`${styles.themeBtn} ${theme === 'dark' ? styles.themeBtnActive : ''}`}
+              onClick={() => setTheme('dark')}
+            >
+              <Moon size={16} /> Dark Mode
+            </button>
+          </div>
+        </div>
+
         <div className={styles.templateGrid}>
           {['minimal', 'corporate', 'branded'].map(t => (
             <div key={t} className={`${styles.templateCard} ${localCompany.defaultTemplate === t ? styles.templateCardActive : ''}`} onClick={() => setLocalCompany({...localCompany, defaultTemplate: t})}>

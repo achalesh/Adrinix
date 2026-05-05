@@ -63,7 +63,7 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  if (activeCompanyId) {
+  if (activeCompanyId && !headers['X-Company-Id'] && !headers['x-company-id']) {
     headers['X-Company-Id'] = activeCompanyId;
   }
 
