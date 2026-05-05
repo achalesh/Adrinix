@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     // 1. Fetch Company Info
-    $stmt = $conn->prepare("SELECT name, address, phone, email, logo, currency_code, locale, registration_number FROM companies WHERE id = ?");
+    $stmt = $conn->prepare("SELECT name, address, phone, email, logo, currency_code, locale, registration_number, stripe_enabled, paypal_enabled, stripe_publishable_key, paypal_client_id FROM companies WHERE id = ?");
     $stmt->bind_param("i", $company_id);
     $stmt->execute();
     $company = $stmt->get_result()->fetch_assoc();

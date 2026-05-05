@@ -105,6 +105,39 @@ while ($row = $monthlyResult->fetch_assoc()) {
     $monthlyRevenue[] = $row;
 }
 $stmt4->close();
+ 
+// --- 5. Top Products (By Revenue) ---
+$itemsTable = t('invoice_items');
+$stmt5 = $conn->prepare("
+    SELECT item.description, SUM(item.quantity * item.unit_price) as revenue
+    FROM `{$itemsTable}` item
+    JOIN `{$invoicesTable}` inv ON item.invoice_id = inv.id
+    WHERE inv.user_id = ?
+    GROUP BY item.description
+    ORDER BY revenue DESC
+    LIMIT 5
+");
+$stmt5->bind_param("i", $user_id);
+$stmt5->execute();
+$productsResult = $stmt5->get_result();
+$topProducts = [];
+while ($row = $productsResult->fetch_assoc()) {
+    $row['revenue'] = (float)$row['revenue'];
+    $topProducts[] = $row;
+}
+$stmt5->close();
+
+// --- 6. Expense Stats ---
+$expTable = t('expenses');
+$stmt6 = $conn->prepare("SELECT COALESCE(SUM(amount), 0) AS total_expenses FROM `{$expTable}` WHERE user_id = ?");
+$stmt6->bind_param("i", $user_id);
+$stmt6->execute();
+$expenseStats = $stmt6->get_result()->fetch_assoc();
+$stmt6->close();
+
+$total_expenses = (float)$expenseStats['total_expenses'];
+$stats['total_expenses'] = $total_expenses;
+$stats['net_profit'] = $stats['paid_revenue'] - $total_expenses;
 
 echo json_encode([
     'status' => 'success',
@@ -112,6 +145,7 @@ echo json_encode([
         'stats' => array_merge($stats, $clientStats),
         'recent_invoices' => $recentInvoices,
         'monthly_revenue' => $monthlyRevenue,
+        'top_products' => $topProducts
     ]
 ]);
 ?>

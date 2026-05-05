@@ -57,7 +57,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'logo' => $company['logo'],
                 'country' => $company['country'],
                 'registrationNumber' => $company['registration_number'],
-                'defaultTemplate' => $company['default_template'] ?? 'minimal'
+                'defaultTemplate' => $company['default_template'] ?? 'minimal',
+                'primaryColor' => $company['primary_color'] ?? '#6366f1',
+                'accentColor' => $company['accent_color'] ?? '#818cf8',
+                'layoutDensity' => $company['layout_density'] ?? 'normal',
+                'stripe_publishable_key' => $company['stripe_publishable_key'] ?? '',
+                'stripe_secret_key' => $company['stripe_secret_key'] ?? '',
+                'paypal_client_id' => $company['paypal_client_id'] ?? '',
+                'paypal_secret' => $company['paypal_secret'] ?? '',
+                'stripe_enabled' => (bool)($company['stripe_enabled'] ?? false),
+                'paypal_enabled' => (bool)($company['paypal_enabled'] ?? false),
+                'customPaymentLink' => $company['custom_payment_link'] ?? ''
             ],
             'localization' => [
                 'currencyCode' => $company['currency_code'] ?? 'USD',
@@ -110,10 +120,20 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $c_curr = $data['localization']['currencyCode'] ?? 'USD';
         $c_loc = $data['localization']['locale'] ?? 'en-US';
         $c_tmpl = $data['company']['defaultTemplate'] ?? 'minimal';
+        $c_prim = $data['company']['primaryColor'] ?? '#6366f1';
+        $c_acc = $data['company']['accentColor'] ?? '#818cf8';
+        $c_dens = $data['company']['layoutDensity'] ?? 'normal';
+        $c_st_pub = $data['company']['stripe_publishable_key'] ?? '';
+        $c_st_sec = $data['company']['stripe_secret_key'] ?? '';
+        $c_pp_cid = $data['company']['paypal_client_id'] ?? '';
+        $c_pp_sec = $data['company']['paypal_secret'] ?? '';
+        $c_st_en = (int)($data['company']['stripe_enabled'] ?? 0);
+        $c_pp_en = (int)($data['company']['paypal_enabled'] ?? 0);
+        $c_pay_link = $data['company']['customPaymentLink'] ?? '';
 
         // Update Master DB
-        $stmt = $conn->prepare("UPDATE companies SET name=?, address=?, phone=?, email=?, logo=?, country=?, registration_number=?, currency_code=?, locale=?, default_template=? WHERE id=? AND user_id=?");
-        $stmt->bind_param("ssssssssssii", $c_name, $c_addr, $c_phone, $c_email, $c_logo, $c_country, $c_reg, $c_curr, $c_loc, $c_tmpl, $cid, $user_id);
+        $stmt = $conn->prepare("UPDATE companies SET name=?, address=?, phone=?, email=?, logo=?, country=?, registration_number=?, currency_code=?, locale=?, default_template=?, primary_color=?, accent_color=?, layout_density=?, stripe_publishable_key=?, stripe_secret_key=?, paypal_client_id=?, paypal_secret=?, stripe_enabled=?, paypal_enabled=?, custom_payment_link=? WHERE id=? AND user_id=?");
+        $stmt->bind_param("sssssssssssssssssiisii", $c_name, $c_addr, $c_phone, $c_email, $c_logo, $c_country, $c_reg, $c_curr, $c_loc, $c_tmpl, $c_prim, $c_acc, $c_dens, $c_st_pub, $c_st_sec, $c_pp_cid, $c_pp_sec, $c_st_en, $c_pp_en, $c_pay_link, $cid, $user_id);
         $stmt->execute();
         $stmt->close();
 
@@ -122,7 +142,10 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Security Error: Attempted to write to master tax table. Expected prefix missing.");
         }
 
-        $conn->query("DELETE FROM `{$taxTable}` WHERE user_id = $user_id");
+        $delStmt = $conn->prepare("DELETE FROM `{$taxTable}` WHERE user_id = ?");
+        $delStmt->bind_param("i", $user_id);
+        $delStmt->execute();
+        $delStmt->close();
         if (!empty($data['taxProfiles'])) {
             $stmt = $conn->prepare("INSERT INTO `{$taxTable}` (user_id, name, percentage) VALUES (?, ?, ?)");
             foreach ($data['taxProfiles'] as $profile) {

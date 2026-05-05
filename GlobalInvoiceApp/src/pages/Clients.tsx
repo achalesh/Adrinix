@@ -11,6 +11,8 @@ import styles from './Clients.module.css';
 interface Client {
   id: number;
   name: string;
+  contact_person: string;
+  contact_designation: string;
   email: string;
   phone: string;
   tax_id: string;
@@ -117,7 +119,7 @@ export const Clients = () => {
   };
 
   const openNewClient = () => {
-    setEditingClient({ name: '', email: '', phone: '', tax_id: '', billing_address: '' });
+    setEditingClient({ name: '', contact_person: '', contact_designation: '', email: '', phone: '', tax_id: '', billing_address: '' });
     setIsModalOpen(true);
   };
 
@@ -204,7 +206,12 @@ export const Clients = () => {
                       <div className={styles.avatarBox}><Users size={16} /></div>
                       <div>
                         <div className={styles.clientNameLink}>{client.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Joined {new Date(client.created_at).toLocaleDateString()}</div>
+                        {client.contact_person && (
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {client.contact_person}{client.contact_designation ? ` · ${client.contact_designation}` : ''}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', opacity: 0.6 }}>Joined {new Date(client.created_at).toLocaleDateString()}</div>
                       </div>
                     </div>
                   </td>
@@ -283,6 +290,16 @@ export const Clients = () => {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
+                  <label>Contact Person Name</label>
+                  <input className="input-field" value={editingClient.contact_person} onChange={e => setEditingClient({...editingClient, contact_person: e.target.value})} placeholder="John Smith" />
+                </div>
+                <div className="form-group">
+                  <label>Designation / Title</label>
+                  <input className="input-field" value={editingClient.contact_designation} onChange={e => setEditingClient({...editingClient, contact_designation: e.target.value})} placeholder="Finance Manager" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
                   <label>Email Address</label>
                   <input type="email" className="input-field" value={editingClient.email} onChange={e => setEditingClient({...editingClient, email: e.target.value})} placeholder="billing@acmecorp.com" />
                 </div>
@@ -332,6 +349,13 @@ export const Clients = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
               {/* Left Column: Info */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className={styles.infoSection}>
+                  <label className={styles.detailLabel}>Contact Person</label>
+                  <div className={styles.detailItem}><Users size={14} /> {viewingClient.contact_person || 'Not specified'}</div>
+                  {viewingClient.contact_designation && (
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '22px', marginTop: '-4px', fontStyle: 'italic' }}>{viewingClient.contact_designation}</div>
+                  )}
+                </div>
                 <div className={styles.infoSection}>
                   <label className={styles.detailLabel}>Contact Information</label>
                   <div className={styles.detailItem}><Mail size={14} /> {viewingClient.email || 'No Email'}</div>

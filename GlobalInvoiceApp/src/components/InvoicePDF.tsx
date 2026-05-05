@@ -78,8 +78,23 @@ interface InvoicePDFProps {
 
 export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal = 0, taxBreakdown = {}, grandTotal = 0 }: InvoicePDFProps) => {
   const loc = settings?.localization?.locale || 'en-US';
-  const cur = settings?.localization?.currencyCode || 'USD';
-  const theme = invoiceMeta.template || 'minimal';
+  const cur = invoiceMeta.currency_code || settings?.localization?.currencyCode || 'USD';
+  const theme = invoiceMeta.template || settings?.company?.defaultTemplate || 'minimal';
+  const primaryColor = settings?.company?.primaryColor || '#6366f1';
+  const accentColor = settings?.company?.accentColor || '#818cf8';
+  const density = settings?.company?.layoutDensity || 'normal';
+
+  const dynamicStyles = StyleSheet.create({
+    brandedAccent: { height: 6, backgroundColor: primaryColor, position: 'absolute', top: 0, left: 0, right: 0 },
+    brandedBadge: { 
+      backgroundColor: primaryColor + '08', // Transparent version
+      padding: 12, borderRadius: 8, alignItems: 'flex-end', borderWidth: 1, borderStyle: 'solid', borderColor: primaryColor + '20' 
+    },
+    brandedBadgeLabel: { fontSize: 8, color: primaryColor, fontWeight: 700, textTransform: 'uppercase' },
+    corporateHeader: { backgroundColor: primaryColor, padding: 30, margin: -40, marginBottom: 40, color: 'white' },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: density === 'compact' ? 5 : density === 'relaxed' ? 14 : 10 },
+    grandTotalBranded: { backgroundColor: primaryColor, color: 'white', padding: 10, borderRadius: 6, borderTopWidth: 0, marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' }
+  });
 
   const renderMinimal = () => (
     <View>
@@ -99,7 +114,7 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
   );
 
   const renderCorporate = () => (
-    <View style={styles.corporateHeader}>
+    <View style={dynamicStyles.corporateHeader}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View>
           {settings.company.logo && <Image src={settings.company.logo} style={styles.logo} />}
@@ -115,17 +130,17 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
 
   const renderBranded = () => (
     <View>
-      <View style={styles.brandedAccent} />
+      <View style={dynamicStyles.brandedAccent} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, marginTop: 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {settings.company.logo && <Image src={settings.company.logo} style={[styles.logo, { marginRight: 10 }]} />}
           <View>
             <Text style={styles.companyName}>{settings.company.name}</Text>
-            <Text style={{ fontSize: 8, color: '#6366f1', fontWeight: 700 }}>STATEMENT</Text>
+            <Text style={{ fontSize: 8, color: primaryColor, fontWeight: 700 }}>STATEMENT</Text>
           </View>
         </View>
-        <View style={styles.brandedBadge}>
-          <Text style={styles.brandedBadgeLabel}>Amount Due</Text>
+        <View style={dynamicStyles.brandedBadge}>
+          <Text style={dynamicStyles.brandedBadgeLabel}>Amount Due</Text>
           <Text style={styles.brandedBadgeVal}>{formatCurrency(grandTotal, loc, cur)}</Text>
         </View>
       </View>
@@ -140,11 +155,20 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
         {theme === 'minimal' && renderMinimal()}
 
         {/* Billing Section */}
-        <View style={[styles.billingSection, theme === 'corporate' ? { marginTop: 20 } : {}]}>
-          <Text style={styles.sectionLabel}>Billed To</Text>
-          <Text style={[styles.bold, { fontSize: 12 }]}>{client.name}</Text>
-          <Text style={styles.textGrey}>{client.address}</Text>
-          <Text style={styles.textGrey}>{client.email}</Text>
+        <View style={[styles.billingSection, { flexDirection: 'row', gap: 40, marginTop: theme === 'corporate' ? 20 : 0 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionLabel}>Billed From</Text>
+            <Text style={[styles.bold, { fontSize: 10 }]}>{settings.company.name}</Text>
+            <Text style={styles.textGrey}>{settings.company.address}</Text>
+            {settings.company.registrationNumber && <Text style={[styles.textGrey, { marginTop: 2 }]}>Tax ID: {settings.company.registrationNumber}</Text>}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionLabel}>Billed To</Text>
+            <Text style={[styles.bold, { fontSize: 10 }]}>{client.name}</Text>
+            <Text style={styles.textGrey}>{client.address}</Text>
+            <Text style={styles.textGrey}>{client.email}</Text>
+            {client.tax_id && <Text style={[styles.textGrey, { marginTop: 2 }]}>Tax ID: {client.tax_id}</Text>}
+          </View>
         </View>
 
         {/* Items Table */}
@@ -156,7 +180,7 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
             <Text style={[styles.colTotal, styles.bold]}>Total</Text>
           </View>
           {items.map((item, i) => (
-            <View key={i} style={styles.tableRow}>
+            <View key={i} style={dynamicStyles.tableRow}>
               <Text style={styles.colDesc}>{item.description}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>
               <Text style={styles.colPrice}>{formatCurrency(item.unit_price, loc, cur)}</Text>
@@ -169,11 +193,16 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
         <View style={styles.summaryGrid}>
           <View style={styles.notesBox}>
             {invoiceMeta.notes && (
-              <>
+              <View style={{ marginBottom: 15 }}>
                 <Text style={styles.sectionLabel}>Notes</Text>
                 <Text style={styles.textGrey}>{invoiceMeta.notes}</Text>
-              </>
+              </View>
             )}
+
+            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+              <Text style={styles.sectionLabel}>Bank Details</Text>
+              <Text style={[styles.textGrey, { lineHeight: 1.4 }]}>{settings.company.bank_details || 'Please contact us for bank transfer details.'}</Text>
+            </View>
           </View>
           <View style={styles.totalsBox}>
             <View style={styles.totalRow}>
@@ -186,7 +215,7 @@ export const InvoicePDF = ({ settings, invoiceMeta, client, items = [], subtotal
                 <Text>{formatCurrency(amount, loc, cur)}</Text>
               </View>
             ))}
-            <View style={[styles.grandTotal, theme === 'branded' ? { backgroundColor: '#6366f1', color: 'white', padding: 10, borderRadius: 6 } : {}]}>
+            <View style={theme === 'branded' ? dynamicStyles.grandTotalBranded : styles.grandTotal}>
               <Text style={[styles.grandTotalText, theme === 'branded' ? { color: 'white' } : {}]}>
                 {invoiceMeta.status === 'Paid' ? 'Total Amount' : 'Total Due'}
               </Text>

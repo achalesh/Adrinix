@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // List all clients with summary stats
     $invoicesTable = t('invoices');
     $stmt = $conn->prepare("
-        SELECT c.id, c.name, c.email, c.phone, c.tax_id, c.billing_address, c.created_at,
+        SELECT c.id, c.name, c.contact_person, c.contact_designation, c.email, c.phone, c.tax_id, c.billing_address, c.created_at,
                COUNT(i.id) as total_invoices,
                SUM(CASE WHEN i.status = 'Paid' THEN i.grand_total ELSE 0 END) as total_paid,
                SUM(CASE WHEN i.status != 'Paid' AND i.status != 'Draft' THEN i.grand_total ELSE 0 END) as total_pending
@@ -58,6 +58,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Insert or Update Client
         $name = $data['name'] ?? '';
+        $contact_person = $data['contact_person'] ?? '';
+        $contact_designation = $data['contact_designation'] ?? '';
         $email = $data['email'] ?? '';
         $phone = $data['phone'] ?? '';
         $tax_id = $data['tax_id'] ?? '';
@@ -70,8 +72,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (isset($data['id']) && $data['id']) {
             // Update Existing Client
-            $stmt = $conn->prepare("UPDATE `{$clientsTable}` SET name = ?, email = ?, phone = ?, tax_id = ?, billing_address = ? WHERE id = ? AND user_id = ?");
-            $stmt->bind_param("sssssii", $name, $email, $phone, $tax_id, $billing_address, $data['id'], $user_id);
+            $stmt = $conn->prepare("UPDATE `{$clientsTable}` SET name = ?, contact_person = ?, contact_designation = ?, email = ?, phone = ?, tax_id = ?, billing_address = ? WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("sssssssii", $name, $contact_person, $contact_designation, $email, $phone, $tax_id, $billing_address, $data['id'], $user_id);
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'Client updated successfully']);
             } else {
@@ -79,8 +81,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Insert New Client
-            $stmt = $conn->prepare("INSERT INTO `{$clientsTable}` (user_id, name, email, phone, tax_id, billing_address) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("isssss", $user_id, $name, $email, $phone, $tax_id, $billing_address);
+            $stmt = $conn->prepare("INSERT INTO `{$clientsTable}` (user_id, name, contact_person, contact_designation, email, phone, tax_id, billing_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("isssssss", $user_id, $name, $contact_person, $contact_designation, $email, $phone, $tax_id, $billing_address);
             
             if ($stmt->execute()) {
                 echo json_encode(['status' => 'success', 'message' => 'New client securely created', 'client_id' => $conn->insert_id]);

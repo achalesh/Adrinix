@@ -47,7 +47,7 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
 
         <div className={styles.detailsGrid}>
           <div className={styles.infoCol}>
-            <span className={styles.label}>From</span>
+            <span className={styles.label}>Billed From</span>
             <div className={styles.infoCard}>
               <p className={styles.bold}>{company.name}</p>
               <p>{company.address}</p>
@@ -56,11 +56,12 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
             </div>
           </div>
           <div className={styles.infoCol}>
-            <span className={styles.label}>Bill To</span>
+            <span className={styles.label}>Billed To</span>
             <div className={styles.infoCard}>
               <p className={styles.bold}>{client.name}</p>
-              <p>{client.address}</p>
+              <p>{client.address || client.billing_address}</p>
               <p>{client.email}</p>
+              {client.tax_id && <p className={styles.taxId}>Tax ID: {client.tax_id}</p>}
             </div>
           </div>
           <div className={styles.infoCol}>
@@ -111,6 +112,12 @@ export const BrandedTemplate: React.FC<TemplateProps> = ({
                 <p className={styles.notesBody}>{invoiceMeta.notes}</p>
               </>
             )}
+
+            <div className={styles.bankSection} style={{ marginTop: 24, padding: 16, background: 'rgba(0,0,0,0.02)', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
+              <span className={styles.label} style={{ display: 'block', marginBottom: 10 }}>Bank Details</span>
+              <p style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.8, whiteSpace: 'pre-wrap' }}>{company.bank_details || 'Please contact us for bank transfer details.'}</p>
+            </div>
+
             {invoiceMeta.signature && (
               <div style={{ marginTop: 24, padding: 16, background: 'rgba(0,0,0,0.02)', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)' }}>
                 <span className={styles.label} style={{ display: 'block', marginBottom: 10 }}>Authorized Signature</span>

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit, X, Check, DollarSign, Users, TrendingUp, ArrowRight, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, Send, FileText, CheckCircle, Clock, User, BookOpen, Sparkles, Wand2, BrainCircuit, X, Check, DollarSign, Users, TrendingUp, ArrowRight, AlertCircle, Wallet } from 'lucide-react';
 import { authFetch, useAuthStore } from '../store/useAuthStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useToastStore } from '../store/useToastStore';
 import { API_BASE } from '../config/api';
 import styles from './Dashboard.module.css';
+import { DashboardCharts } from '../components/Dashboard/DashboardCharts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DashStats {
@@ -27,6 +28,13 @@ interface DashStats {
   quote_declined_count: number;
   quote_pipeline_value: number;
   quote_won_value: number;
+  total_expenses: number;
+  net_profit: number;
+}
+
+interface TopProduct {
+  description: string;
+  revenue: number;
 }
 
 interface RecentInvoice {
@@ -105,6 +113,7 @@ export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashStats | null>(null);
   const [recent, setRecent] = useState<RecentInvoice[]>([]);
   const [monthly, setMonthly] = useState<MonthlyRevenue[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDemo, setIsDemo] = useState(false);
 
@@ -126,6 +135,7 @@ export const Dashboard: React.FC = () => {
         setStats(payload.data.stats);
         setRecent(payload.data.recent_invoices);
         setMonthly(payload.data.monthly_revenue);
+        setTopProducts(payload.data.top_products || []);
       } else {
         showToast(payload.message || 'Failed to load dashboard data', 'error');
         loadDemoData();
@@ -161,7 +171,9 @@ export const Dashboard: React.FC = () => {
       quote_pipeline_value: 12500,
       quote_won_value: 8400,
       draft_count: 5,
-      draft_revenue: 18200
+      draft_revenue: 18200,
+      total_expenses: 42500,
+      net_profit: 53840
     });
     setRecent([
       { id: 1, invoice_number: 'INV-0024', client_name: 'Vertex Corp', status: 'Paid',    issue_date: '2026-04-15', due_date: '2026-04-30', grand_total: 8750, type: 'Invoice' },
@@ -177,6 +189,12 @@ export const Dashboard: React.FC = () => {
       { month_label: 'Feb', revenue: 26400 },
       { month_label: 'Mar', revenue: 19450 },
       { month_label: 'Apr', revenue: 28000 },
+    ]);
+    setTopProducts([
+      { description: 'Consulting', revenue: 15000 },
+      { description: 'UI/UX Design', revenue: 12000 },
+      { description: 'Development', revenue: 9000 },
+      { description: 'Maintenance', revenue: 4500 },
     ]);
   };
 
@@ -219,35 +237,33 @@ export const Dashboard: React.FC = () => {
           icon: Clock,
           accent: '#f59e0b',
         },
+        {
+          label: 'Total Expenses',
+          value: fmtCurrency(stats.total_expenses || 0, curStr, locStr),
+          sub: 'Recorded expenditures',
+          subClass: styles.statSubAmber,
+          icon: Wallet,
+          accent: '#fca5a5',
+        },
+        {
+          label: 'Net Profit',
+          value: fmtCurrency(stats.net_profit || 0, curStr, locStr),
+          sub: 'Based on collected revenue',
+          subClass: (stats.net_profit || 0) >= 0 ? styles.statSubGreen : styles.statSubAmber,
+          icon: Sparkles,
+          accent: '#10b981',
+        },
       ]
     : [];
 
   // ── Quick actions ──────────────────────────────────────────────────────────
   const quickActions = [
-    {
-      title: 'New Invoice',
-      desc: 'Create and send an invoice',
-      icon: FileText,
-      bg: 'rgba(99,102,241,0.15)',
-      color: '#818cf8',
-      to: '/invoices',
-    },
-    {
-      title: 'Add Client',
-      desc: 'Add a new client record',
-      icon: Users,
-      bg: 'rgba(236,72,153,0.15)',
-      color: '#f472b6',
-      to: '/clients',
-    },
-    {
-      title: 'Company Settings',
-      desc: 'Configure billing & taxes',
-      icon: TrendingUp,
-      bg: 'rgba(16,185,129,0.15)',
-      color: '#34d399',
-      to: '/settings',
-    },
+    { title: 'New Invoice',    desc: 'Bill a client',        icon: FileText,   bg: 'rgba(99,102,241,0.15)',  color: '#818cf8', to: '/invoices/new' },
+    { title: 'New Quotation',  desc: 'Send a proposal',      icon: BookOpen,   bg: 'rgba(139,92,246,0.15)', color: '#a78bfa', to: '/quotations/new' },
+    { title: 'Add Client',     desc: 'New client record',    icon: Users,      bg: 'rgba(236,72,153,0.15)', color: '#f472b6', to: '/clients' },
+    { title: 'Log Expense',    desc: 'Track a cost',         icon: Wallet,     bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', to: '/expenses' },
+    { title: 'View Invoices',  desc: 'All documents',        icon: CheckCircle,bg: 'rgba(16,185,129,0.15)', color: '#34d399', to: '/invoices' },
+    { title: 'Settings',       desc: 'Billing & taxes',      icon: TrendingUp, bg: 'rgba(248,113,113,0.15)',color: '#f87171', to: '/settings' },
   ];
 
   return (
@@ -266,14 +282,26 @@ export const Dashboard: React.FC = () => {
               background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)',
               borderRadius: '8px', padding: '6px 14px', fontWeight: 500
             }}>
-              ⚡ Demo Mode — PHP backend not connected
+              ⚡ Demo Mode
             </span>
           )}
-          <button className="btn-primary" onClick={() => navigate('/invoices')}>
-            <Plus size={16} /> New Invoice
-          </button>
         </div>
       </header>
+
+      {/* ── Quick Links Strip ── */}
+      <div className={styles.quickLinksStrip}>
+        {quickActions.map((action, i) => (
+          <Link key={i} to={action.to} className={styles.quickLinkCard}>
+            <div className={styles.quickLinkIcon} style={{ background: action.bg }}>
+              <action.icon size={20} color={action.color} />
+            </div>
+            <div className={styles.quickLinkText}>
+              <div className={styles.quickLinkTitle}>{action.title}</div>
+              <div className={styles.quickLinkDesc}>{action.desc}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
 
       {/* ── Stat Cards ── */}
       <div className={styles.statsGrid}>
@@ -304,161 +332,95 @@ export const Dashboard: React.FC = () => {
             ))}
       </div>
 
+      {/* ── Visual Analytics ── */}
+      {!isLoading && stats && (
+        <DashboardCharts monthlyRevenue={monthly} topProducts={topProducts} stats={stats} />
+      )}
+
       {/* Proposal Pipeline Section */}
-      <section style={{ marginTop: 40 }}>
+      <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Proposal Pipeline</h2>
           <Link to="/quotations" className={styles.viewAllLink}>View All Proposals <ArrowRight size={14} /></Link>
         </div>
-        
         <div className={styles.pipelineGrid}>
            <div className={styles.pipelineCard}>
-              <div className={styles.pipelineHeader}>
-                <Clock size={16} color="rgba(255,255,255,0.4)" />
-                <span>Drafts</span>
-              </div>
+              <div className={styles.pipelineHeader}><Clock size={16} color="rgba(255,255,255,0.4)" /><span>Drafts</span></div>
               <div className={styles.pipelineValue}>{stats?.quote_draft_count || 0}</div>
            </div>
            <div className={styles.pipelineCard}>
-              <div className={styles.pipelineHeader}>
-                <TrendingUp size={16} color="#6366f1" />
-                <span>Sent</span>
-              </div>
+              <div className={styles.pipelineHeader}><TrendingUp size={16} color="#6366f1" /><span>Sent</span></div>
               <div className={styles.pipelineValue}>{stats?.quote_sent_count || 0}</div>
            </div>
            <div className={styles.pipelineCard}>
-              <div className={styles.pipelineHeader}>
-                <CheckCircle size={16} color="#10b981" />
-                <span>Accepted</span>
-              </div>
+              <div className={styles.pipelineHeader}><CheckCircle size={16} color="#10b981" /><span>Accepted</span></div>
               <div className={styles.pipelineValue} style={{ color: '#10b981' }}>{stats?.quote_accepted_count || 0}</div>
            </div>
            <div className={styles.pipelineCard}>
-              <div className={styles.pipelineHeader}>
-                <AlertCircle size={16} color="#ef4444" />
-                <span>Declined</span>
-              </div>
+              <div className={styles.pipelineHeader}><AlertCircle size={16} color="#ef4444" /><span>Declined</span></div>
               <div className={styles.pipelineValue} style={{ color: '#ef4444' }}>{stats?.quote_declined_count || 0}</div>
            </div>
            <div className={styles.pipelineCard} style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-              <div className={styles.pipelineHeader}>
-                <DollarSign size={16} color="#818cf8" />
-                <span>Pipeline Value</span>
-              </div>
+              <div className={styles.pipelineHeader}><DollarSign size={16} color="#818cf8" /><span>Pipeline Value</span></div>
               <div className={styles.pipelineValue} style={{ fontSize: '1.4rem' }}>{fmtCurrency(stats?.quote_pipeline_value || 0, curStr, locStr)}</div>
            </div>
         </div>
       </section>
 
-      {/* ── Bottom Row ── */}
-      <div className={styles.bottomRow}>
-
-        {/* Recent Invoices */}
-        <div className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>Recent Invoices</span>
-            <Link to="/invoices" className={styles.seeAllLink}>
-              View all <ArrowRight size={12} style={{ display: 'inline', marginLeft: 2 }} />
-            </Link>
-          </div>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Invoice</th>
-                <th>Client</th>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 5 }).map((__, j) => (
-                        <td key={j}><div className={styles.shimmer} style={{ height: 16 }} /></td>
-                      ))}
-                    </tr>
-                  ))
-                : recent.length === 0
-                  ? (
-                    <tr><td colSpan={5} className={styles.emptyState}>
-                      No invoices yet. <Link to="/invoices" style={{ color: 'var(--primary-color)' }}>Create your first one →</Link>
-                    </td></tr>
-                  )
-                  : recent.map(inv => (
-                    <tr key={inv.id} onClick={() => navigate(inv.type === 'Quotation' ? `/quotations/${inv.id}` : `/invoices/${inv.id}`)}>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span className={styles.invNumber}>{inv.invoice_number}</span>
-                          <span style={{ fontSize: '9px', textTransform: 'uppercase', color: inv.type === 'Quotation' ? '#818cf8' : 'var(--text-secondary)', opacity: 0.8 }}>
-                            {inv.type || 'Invoice'}
-                          </span>
-                        </div>
-                      </td>
-                      <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
-                      <td><span className={styles.invDate}>{fmtDate(inv.issue_date)}</span></td>
-                      <td><span className={styles.amount}>{fmtCurrency(inv.grand_total, curStr, locStr)}</span></td>
-                      <td><StatusBadge status={inv.status} /></td>
-                    </tr>
-                  ))
-              }
-            </tbody>
-          </table>
+      {/* ── Recent Invoices (Full Width) ── */}
+      <div className={styles.sectionCard}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionTitle}>Recent Activity</span>
+          <Link to="/invoices" className={styles.seeAllLink}>
+            View all <ArrowRight size={12} style={{ display: 'inline', marginLeft: 2 }} />
+          </Link>
         </div>
-
-        {/* Right Column: chart + quick actions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {/* Monthly Revenue Chart */}
-          {!isLoading && monthly.length > 0 && (
-            <div className={styles.chartCard}>
-              <div className={styles.sectionHeader}>
-                <span className={styles.sectionTitle}>Revenue Trend</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Last 6 months</span>
-              </div>
-              <div className={styles.chartBody}>
-                <div className={styles.chartBars}>
-                  {monthly.map((m, i) => {
-                    const pct = maxRevenue > 0 ? (m.revenue / maxRevenue) * 100 : 0;
-                    return (
-                      <div key={i} className={styles.chartBarWrap} title={`${m.month_label}: ${fmtCurrency(m.revenue, curStr, locStr)}`}>
-                        <div
-                          className={styles.chartBar}
-                          style={{ height: `${Math.max(pct, 4)}%` }}
-                        />
-                        <span className={styles.chartBarLabel}>{m.month_label}</span>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Client</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i}>
+                    {Array.from({ length: 5 }).map((__, j) => (
+                      <td key={j}><div className={styles.shimmer} style={{ height: 16 }} /></td>
+                    ))}
+                  </tr>
+                ))
+              : recent.length === 0
+                ? (
+                  <tr><td colSpan={5} className={styles.emptyState}>
+                    No invoices yet. <Link to="/invoices/new" style={{ color: 'var(--primary-color)' }}>Create your first one →</Link>
+                  </td></tr>
+                )
+                : recent.map(inv => (
+                  <tr key={inv.id} onClick={() => navigate(inv.type === 'Quotation' ? `/quotations/${inv.id}` : `/invoices/${inv.id}`)}>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className={styles.invNumber}>{inv.invoice_number}</span>
+                        <span style={{ fontSize: '9px', textTransform: 'uppercase', color: inv.type === 'Quotation' ? '#818cf8' : 'var(--text-secondary)', opacity: 0.8 }}>
+                          {inv.type || 'Invoice'}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Actions */}
-          <div className={styles.sectionCard}>
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionTitle}>Quick Actions</span>
-            </div>
-            <div className={styles.quickActionsInner}>
-              {quickActions.map((action, i) => (
-                <Link key={i} to={action.to} className={styles.actionBtn}>
-                  <div className={styles.actionIconBox} style={{ background: action.bg }}>
-                    <action.icon size={18} color={action.color} />
-                  </div>
-                  <div className={styles.actionText}>
-                    <div className={styles.actionTitle}>{action.title}</div>
-                    <div className={styles.actionDesc}>{action.desc}</div>
-                  </div>
-                  <ArrowRight size={16} color="var(--text-secondary)" />
-                </Link>
-              ))}
-            </div>
-          </div>
-
-        </div>
+                    </td>
+                    <td><span className={styles.clientName}>{inv.client_name ?? '—'}</span></td>
+                    <td><span className={styles.invDate}>{fmtDate(inv.issue_date)}</span></td>
+                    <td><span className={styles.amount}>{fmtCurrency(inv.grand_total, curStr, locStr)}</span></td>
+                    <td><StatusBadge status={inv.status} /></td>
+                  </tr>
+                ))
+            }
+          </tbody>
+        </table>
       </div>
+
     </div>
   );
 };

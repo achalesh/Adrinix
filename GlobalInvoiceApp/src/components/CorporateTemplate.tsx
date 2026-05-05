@@ -45,6 +45,7 @@ export const CorporateTemplate: React.FC<TemplateProps> = ({
 
         <div className={styles.headerBottom}>
           <div className={styles.companyInfo}>
+            <span className={styles.sectionLabel}>Billed From</span>
             <h3>{company.name}</h3>
             <p>{company.address}</p>
             <p>{company.email} | {company.phone}</p>
@@ -68,8 +69,9 @@ export const CorporateTemplate: React.FC<TemplateProps> = ({
           <span className={styles.sectionLabel}>Billed To</span>
           <div className={styles.clientDetails}>
             <h4>{client.name}</h4>
-            <p>{client.address}</p>
+            <p>{client.address || client.billing_address}</p>
             <p>{client.email}</p>
+            {client.tax_id && <p className={styles.taxId}>Tax ID: {client.tax_id}</p>}
           </div>
         </div>
       </section>
@@ -99,6 +101,11 @@ export const CorporateTemplate: React.FC<TemplateProps> = ({
         <div className={styles.notes}>
           <span className={styles.sectionLabel}>Important Notes</span>
           <p>{invoiceMeta.notes || 'Please pay by the due date. Thank you.'}</p>
+          
+          <div className={styles.bankInfo} style={{ marginTop: 25, paddingTop: 15, borderTop: '1px solid #eee' }}>
+            <span className={styles.sectionLabel}>Bank Details</span>
+            <p style={{ fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{company.bank_details || 'Please contact us for bank transfer details.'}</p>
+          </div>
         </div>
         <div className={styles.totals}>
           <div className={styles.totalLine}>

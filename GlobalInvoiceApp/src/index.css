@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  color-scheme: dark;
   /* Dynamic Modern Palette */
   --bg-color: #0f1115;
   --panel-bg: rgba(26, 29, 36, 0.7);
@@ -114,6 +115,12 @@ body {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Standardizing select dropdown appearance for dark mode */
+select option {
+  background-color: #1a1d24;
+  color: #ffffff;
 }
 
 .form-group {

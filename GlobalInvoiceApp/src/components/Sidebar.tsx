@@ -1,14 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, Plus, X, RefreshCw, Search, FileCode, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Building2, LogOut, ShoppingBag, ChevronDown, X, RefreshCw, Search, FileCode, HelpCircle, Wallet, BarChart3, Download, Monitor } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { AdrinixLogo } from './Logo';
 import styles from './Sidebar.module.css';
 
 export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ isOpen, onClose }) => {
   const { company, companies, fetchCompanies, fetchSettings } = useSettingsStore();
   const { logout, setActiveCompanyId, activeCompanyId, user } = useAuthStore();
+  const { isInstallable, showInstallPrompt } = usePWAInstall();
   const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -114,6 +116,22 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
           <span>Recurring</span>
         </NavLink>
         <NavLink 
+          to="/expenses" 
+          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+          onClick={onClose}
+        >
+          <Wallet size={20} />
+          <span>Expenses</span>
+        </NavLink>
+        <NavLink 
+          to="/reports" 
+          className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
+          onClick={onClose}
+        >
+          <BarChart3 size={20} />
+          <span>Reports</span>
+        </NavLink>
+        <NavLink 
           to="/clients" 
           className={({ isActive }) => `${styles.link} ${isActive ? styles.linkActive : ''}`}
           onClick={onClose}
@@ -147,6 +165,17 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ 
           <HelpCircle size={20} />
           <span>Help Center</span>
         </NavLink>
+
+        {isInstallable && (
+          <button 
+            onClick={showInstallPrompt} 
+            className={styles.link} 
+            style={{ border: 'none', background: 'rgba(99, 102, 241, 0.1)', cursor: 'pointer', textAlign: 'left', width: '100%', color: 'var(--primary-color)', fontWeight: 600, marginTop: 10 }}
+          >
+            <Monitor size={20} />
+            <span>Install Adrinix</span>
+          </button>
+        )}
         
         <button onClick={logout} className={`${styles.link} ${styles.logoutBtn}`} style={{ border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', marginTop: '20px' }}>
           <LogOut size={20} color="#fca5a5" />

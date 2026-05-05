@@ -50,11 +50,18 @@ export const MinimalTemplate: React.FC<TemplateProps> = ({
       </div>
 
       <div className={styles.billingSection}>
+        <div className={styles.billFrom}>
+          <p className={styles.label}>Billed From</p>
+          <h3 className={styles.companyName}>{company.name}</h3>
+          <p className={styles.clientAddress}>{company.address}</p>
+          {company.registrationNumber && <p className={styles.taxId}>Tax ID: {company.registrationNumber}</p>}
+        </div>
         <div className={styles.billTo}>
-          <p className={styles.label}>Bill To</p>
+          <p className={styles.label}>Billed To</p>
           <h3 className={styles.clientName}>{client.name}</h3>
-          <p className={styles.clientAddress}>{client.address}</p>
+          <p className={styles.clientAddress}>{client.address || client.billing_address}</p>
           <p className={styles.clientEmail}>{client.email}</p>
+          {client.tax_id && <p className={styles.taxId}>Tax ID: {client.tax_id}</p>}
         </div>
       </div>
 
@@ -87,6 +94,12 @@ export const MinimalTemplate: React.FC<TemplateProps> = ({
               <p className={styles.notesText}>{invoiceMeta.notes}</p>
             </>
           )}
+          
+          <div className={styles.bankDetails} style={{ marginTop: 25, paddingTop: 15, borderTop: '1px solid #eee' }}>
+            <p className={styles.label}>Bank Details</p>
+            <p className={styles.notesText} style={{ whiteSpace: 'pre-wrap' }}>{company.bank_details || 'Please contact us for bank transfer details.'}</p>
+          </div>
+
           {invoiceMeta.signature && (
             <div style={{ marginTop: 30 }}>
               <p className={styles.label}>Authorized Signature</p>

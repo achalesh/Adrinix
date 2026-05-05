@@ -1,6 +1,7 @@
 <?php
 // api/invoices.php
 require_once 'db.php';
+require_once 'validator.php';
 
 // Auth and Company check moved into the handler block below
 
@@ -12,19 +13,27 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $client_id = (int)($_GET['client_id'] ?? 0);
-        $where = "WHERE 1=1";
+
         if ($client_id) {
-            $where .= " AND i.client_id = $client_id";
+            $query = "
+                SELECT i.*, c.name AS client_name
+                FROM `{$invoicesTable}` i
+                LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
+                WHERE i.client_id = ?
+                ORDER BY i.created_at DESC
+            ";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("i", $client_id);
+        } else {
+            $query = "
+                SELECT i.*, c.name AS client_name
+                FROM `{$invoicesTable}` i
+                LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
+                ORDER BY i.created_at DESC
+            ";
+            $stmt = $conn->prepare($query);
         }
-        
-        $query = "
-            SELECT i.*, c.name AS client_name
-            FROM `{$invoicesTable}` i
-            LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
-            $where ORDER BY i.created_at DESC
-        ";
-        $stmt = $conn->prepare($query);
-        // No bind_param needed for 1=1
+
         $stmt->execute();
         $result = $stmt->get_result();
         $invoices = [];
@@ -32,13 +41,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
         $stmt->close();
         echo json_encode([
             'status' => 'success', 
-            'data' => $invoices,
-            'debug' => [
-                'user_id' => $user_id,
-                'prefix' => $t_prefix,
-                'count' => count($invoices),
-                'query' => str_replace(["\n", "  "], " ", $query)
-            ]
+            'data' => $invoices
         ]);
         exit;
     }
@@ -56,12 +59,24 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
 
         $action = $data['action'] ?? 'create';
 
+        if ($action === 'create' || $action === 'update') {
+            validateRequest($data, [
+                'invoice_number' => 'required',
+                'issue_date'     => 'required|date',
+                'due_date'       => 'required|date',
+                'grand_total'    => 'required|numeric',
+                'status'         => 'required|in:Draft,Sent,Paid,Overdue,Accepted,Declined',
+            ]);
+        }
+
         // ── FETCH SINGLE INVOICE with items & client ──────────────────────────────
         if ($action === 'get') {
             $id = (int)($data['id'] ?? 0);
             $stmt = $conn->prepare("
                 SELECT i.*, c.name AS client_name, c.email AS client_email,
-                       c.billing_address AS client_address, c.id AS client_id
+                       c.billing_address AS client_address, c.id AS client_id,
+                       c.contact_person AS client_contact_person, c.contact_designation AS client_contact_designation,
+                       c.tax_id AS client_tax_id
                 FROM `{$invoicesTable}` i LEFT JOIN `{$clientsTable}` c ON i.client_id = c.id
                 WHERE i.id = ? AND i.user_id = ?
             ");
@@ -120,6 +135,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
             $stmt = $conn->prepare("UPDATE `{$invoicesTable}` SET status=?, payment_method=?, payment_date=? WHERE id=? AND user_id=?");
             $stmt->bind_param("sssii", $status, $pay_method, $pay_date, $id, $user_id);
             $stmt->execute(); $stmt->close();
+            logActivity($conn, $company_id, $user_id, 'Status Updated', 'Invoice', $id, "Status changed to $status");
             echo json_encode(['status' => 'success', 'message' => 'Status updated']);
             exit;
         }
@@ -170,6 +186,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
                 $upd->close();
 
                 $conn->commit();
+                logActivity($conn, $company_id, $user_id, 'Milestone Invoiced', 'Invoice', $newInvoiceId, "Invoiced from Milestone: " . $m['description']);
                 echo json_encode(['status' => 'success', 'message' => 'Milestone Invoiced', 'invoice_id' => $newInvoiceId]);
             } catch (Exception $e) {
                 $conn->rollback();
@@ -226,6 +243,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
                 $upd->close();
 
                 $conn->commit();
+                logActivity($conn, $company_id, $user_id, 'Converted to Invoice', 'Invoice', $newInvoiceId, "Converted from Quotation #" . $quote['invoice_number']);
                 echo json_encode(['status' => 'success', 'message' => 'Converted to Invoice', 'invoice_id' => $newInvoiceId]);
             } catch (Exception $e) {
                 $conn->rollback();
@@ -240,6 +258,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
             $stmt = $conn->prepare("DELETE FROM `{$invoicesTable}` WHERE id=? AND user_id=?");
             $stmt->bind_param("ii", $id, $user_id);
             $stmt->execute(); $stmt->close();
+            logActivity($conn, $company_id, $user_id, 'Deleted', 'Invoice', $id);
             echo json_encode(['status' => 'success', 'message' => 'Invoice deleted']);
             exit;
         }
@@ -319,6 +338,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
                 }
 
                 $conn->commit();
+                logActivity($conn, $company_id, $user_id, 'Updated', 'Invoice', $id, "Draft/Details updated");
                 echo json_encode(['status' => 'success', 'message' => 'Invoice updated', 'public_token' => $finalToken]);
             } catch (Exception $e) {
                 $conn->rollback();
@@ -390,6 +410,7 @@ function handleInvoicesRequest($conn, $user_id, $company_id, $authUser = null) {
             }
 
             $conn->commit();
+            logActivity($conn, $company_id, $user_id, 'Created', 'Invoice', $invoice_id, "New document #{$data['invoice_number']} created");
             echo json_encode(['status' => 'success', 'message' => 'Document saved', 'invoice_id' => $invoice_id, 'public_token' => $token]);
         } catch (Exception $e) {
             $conn->rollback();

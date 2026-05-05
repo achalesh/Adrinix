@@ -13,7 +13,7 @@ $taxTable = t('tax_profiles');
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Fetch all products for this user in this tenant, joining tax profile label
     $stmt = $conn->prepare("
-        SELECT p.*, tp.name AS tax_label, tp.percentage AS tax_rate
+        SELECT p.*, p.base_price AS unit_price, tp.name AS tax_label, tp.percentage AS tax_rate
         FROM `{$productsTable}` p
         LEFT JOIN `{$taxTable}` tp ON p.tax_profile_id = tp.id
         WHERE p.user_id = ?
@@ -24,6 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $result = $stmt->get_result();
     $products = [];
     while ($row = $result->fetch_assoc()) {
+        // Guarantee unit_price is set for the frontend
+        if (!isset($row['unit_price']) && isset($row['base_price'])) {
+            $row['unit_price'] = (float)$row['base_price'];
+        }
         $products[] = $row;
     }
     $stmt->close();

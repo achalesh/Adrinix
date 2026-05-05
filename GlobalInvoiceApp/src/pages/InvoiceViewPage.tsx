@@ -50,7 +50,8 @@ export const InvoiceViewPage = () => {
           setClient({
             name: inv.client_name,
             email: inv.client_email,
-            address: inv.client_address
+            address: inv.client_address,
+            tax_id: inv.client_tax_id
           });
           setItems(inv.items || []);
           setTotals({

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { API_BASE } from '../config/api';
 import { InvoicePreview } from '../components/InvoicePreview';
 import { LoadingView } from '../components/LoadingView';
-import { Printer, Download, CheckCircle, ExternalLink } from 'lucide-react';
+import { Printer, Download, CheckCircle, ExternalLink, CreditCard } from 'lucide-react';
 
 export const ClientPortal = () => {
   const { companyId, token } = useParams();
@@ -36,6 +36,35 @@ export const ClientPortal = () => {
 
     if (companyId && token) fetchPortalData();
   }, [companyId, token]);
+
+  // Handle Payment Return
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    if (sessionId && companyId && token && invoiceData && invoiceData.status !== 'Paid') {
+      verifyStripePayment(sessionId);
+    }
+  }, [invoiceData]);
+
+  const verifyStripePayment = async (sessionId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/payments.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify_stripe_payment',
+          company_id: companyId,
+          public_token: token,
+          session_id: sessionId
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setSuccessMessage('Payment successful! Thank you.');
+        setTimeout(() => window.location.href = window.location.pathname, 3000);
+      }
+    } catch (e) { console.error(e); }
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -124,6 +153,70 @@ export const ClientPortal = () => {
       }
     } catch (e) {
       alert('Action failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleStripePayment = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/payments.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_stripe_session',
+          company_id: companyId,
+          public_token: token,
+          success_url: window.location.href,
+          cancel_url: window.location.href
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success' && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.message || 'Stripe checkout failed');
+      }
+    } catch (e) {
+      alert('Payment failed to initialize.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+  useEffect(() => {
+    if (companyData?.paypal_enabled && companyData?.paypal_client_id && !paypalLoaded) {
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${companyData.paypal_client_id}&currency=${companyData.currency_code || 'USD'}`;
+      script.addEventListener('load', () => setPaypalLoaded(true));
+      document.body.appendChild(script);
+    }
+  }, [companyData]);
+
+  const handlePayPalCapture = async (orderId: string) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/payments.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'capture_paypal_payment',
+          company_id: companyId,
+          public_token: token,
+          order_id: orderId
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setSuccessMessage('Payment successful! Thank you.');
+        setTimeout(() => window.location.reload(), 3000);
+      } else {
+        alert(data.message || 'PayPal capture failed');
+      }
+    } catch (e) {
+      alert('Failed to capture PayPal payment');
     } finally {
       setIsSubmitting(false);
     }
@@ -226,6 +319,47 @@ export const ClientPortal = () => {
         </div>
         
         <div style={{ display: 'flex', gap: 12 }}>
+          {inv.type === 'Invoice' && inv.status !== 'Paid' && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              {comp.stripe_enabled && (
+                <button 
+                  className="btn-primary" 
+                  onClick={handleStripePayment}
+                  disabled={isSubmitting}
+                  style={{ background: '#635bff', borderColor: '#635bff', borderRadius: 10 }}
+                >
+                  <CreditCard size={18} /> Pay with Card
+                </button>
+              )}
+              {comp.paypal_enabled && paypalLoaded && (
+                <div id="paypal-button-container" style={{ minWidth: 150 }}>
+                   <button 
+                     className="btn-primary" 
+                     onClick={() => {
+                        // @ts-ignore
+                        window.paypal.Buttons({
+                          createOrder: (data: any, actions: any) => {
+                            return actions.order.create({
+                              purchase_units: [{
+                                amount: { value: inv.grand_total.toString() },
+                                description: `Invoice ${inv.invoice_number}`
+                              }]
+                            });
+                          },
+                          onApprove: (data: any, actions: any) => {
+                            return handlePayPalCapture(data.orderID);
+                          }
+                        }).render('#paypal-button-container');
+                     }}
+                     style={{ background: '#ffc439', color: '#000', borderColor: '#ffc439', borderRadius: 10 }}
+                   >
+                     PayPal
+                   </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {inv.type === 'Quotation' && inv.status !== 'Paid' && inv.status !== 'Accepted' && (
             <>
               <button 
@@ -246,8 +380,8 @@ export const ClientPortal = () => {
               </button>
             </>
           )}
-          <button className="btn-primary" onClick={() => window.print()} style={{ borderRadius: 10 }}>
-            <Printer size={18} /> Download
+          <button className="btn-secondary" onClick={() => window.print()} style={{ borderRadius: 10 }}>
+            <Printer size={18} /> Print
           </button>
         </div>
       </div>

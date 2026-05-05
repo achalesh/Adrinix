@@ -1,7 +1,28 @@
 <?php
 // api/db.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+
+// ─── LOAD ENVIRONMENT ─────────────────────────────────────────────────────────
+// Parse .env file for configuration. In production, use server-level env vars.
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if (!getenv($key)) {
+            putenv("$key=$value");
+        }
+    }
+}
+
+// ─── ERROR HANDLING ───────────────────────────────────────────────────────────
+// Controlled by DISPLAY_ERRORS env var. Default OFF for production safety.
+$displayErrors = getenv('DISPLAY_ERRORS') === '1';
+ini_set('display_errors', $displayErrors ? 1 : 0);
+ini_set('display_startup_errors', $displayErrors ? 1 : 0);
 error_reporting(E_ALL);
 
 /**
@@ -22,15 +43,18 @@ if (!function_exists('getallheaders')) {
 
 /**
  * Global Error/Exception Handlers for JSON Output
+ * In production, never expose internal file paths or line numbers.
  */
 set_exception_handler(function ($e) {
     http_response_code(500);
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Backend Exception: ' . $e->getMessage(),
-        'file' => basename($e->getFile()),
-        'line' => $e->getLine()
-    ]);
+    $response = ['status' => 'error', 'message' => 'An internal server error occurred.'];
+    if (getenv('DISPLAY_ERRORS') === '1') {
+        $response['debug_message'] = $e->getMessage();
+        $response['debug_file'] = basename($e->getFile());
+        $response['debug_line'] = $e->getLine();
+    }
+    echo json_encode($response);
+    error_log("Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
     exit;
 });
 
@@ -43,7 +67,23 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 // Enable mysqli exceptions for cleaner error catching
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-header("Access-Control-Allow-Origin: *");
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// Restrict to allowed origins instead of wildcard "*"
+$allowedOriginsStr = getenv('ALLOWED_ORIGINS') ?: 'http://localhost:5173,http://localhost:5175';
+$allowedOrigins = array_map('trim', explode(',', $allowedOriginsStr));
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (in_array($requestOrigin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: " . $requestOrigin);
+    header("Access-Control-Allow-Credentials: true");
+} elseif (empty($requestOrigin)) {
+    // Allow non-browser requests (e.g., Postman, cURL, server-to-server)
+    // No ACAO header is sent, which is fine for non-browser clients
+} else {
+    // Unknown origin — allow read-only. Browsers will still block cookie/auth flows.
+    header("Access-Control-Allow-Origin: " . $allowedOrigins[0]);
+}
+
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Company-Id");
 
@@ -54,12 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 header("Content-Type: application/json");
 
-// ─── DB CONFIG ──────────────────────────────────────────────────────────────
-$host = 'localhost';
-$db_name = 'adrinix_db';
-$username = 'adrinix_user';
-$password = 'Adrinix**99';
-// ────────────────────────────────────────────────────────────────────────────
+// ─── DB CONFIG (from environment) ─────────────────────────────────────────────
+$host     = getenv('DB_HOST') ?: 'localhost';
+$db_name  = getenv('DB_NAME') ?: 'adrinix_db';
+$username = getenv('DB_USER') ?: 'adrinix_user';
+$password = getenv('DB_PASS') ?: '';
 
 $conn = new mysqli($host, $username, $password, $db_name);
 if ($conn->connect_error) {
@@ -71,11 +110,44 @@ $conn->set_charset("utf8mb4");
 // ─── GLOBAL SCHEMA SETUP ──────────────────────────────────────────────────
 try {
     $conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, company_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
-    $conn->query("CREATE TABLE IF NOT EXISTS companies (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, country VARCHAR(100), address TEXT, phone VARCHAR(50), email VARCHAR(255), logo LONGTEXT, registrationNumber VARCHAR(100), defaultTemplate VARCHAR(50) DEFAULT 'minimal', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    
+    // Master Companies Table - ensure all expected columns exist
+    $conn->query("CREATE TABLE IF NOT EXISTS companies (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    
+    $compCols = [
+        'country' => 'VARCHAR(100)',
+        'address' => 'TEXT',
+        'phone' => 'VARCHAR(50)',
+        'email' => 'VARCHAR(255)',
+        'logo' => 'LONGTEXT',
+        'registration_number' => 'VARCHAR(100)',
+        'default_template' => "VARCHAR(50) DEFAULT 'minimal'",
+        'currency_code' => "VARCHAR(10) DEFAULT 'INR'",
+        'locale' => "VARCHAR(10) DEFAULT 'en-IN'",
+        'primary_color' => "VARCHAR(20) DEFAULT '#6366f1'",
+        'accent_color' => "VARCHAR(20) DEFAULT '#818cf8'",
+        'layout_density' => "VARCHAR(20) DEFAULT 'normal'",
+        'stripe_publishable_key' => "VARCHAR(255)",
+        'stripe_secret_key' => "VARCHAR(255)",
+        'paypal_client_id' => "VARCHAR(255)",
+        'paypal_secret' => "VARCHAR(255)",
+        'stripe_enabled' => "TINYINT(1) DEFAULT 0",
+        'paypal_enabled' => "TINYINT(1) DEFAULT 0",
+        'custom_payment_link' => "TEXT",
+        'schema_version' => "INT DEFAULT 0"
+    ];
+    foreach ($compCols as $col => $type) {
+        $check = $conn->query("SHOW COLUMNS FROM companies LIKE '$col'");
+        if ($check->num_rows == 0) {
+            $conn->query("ALTER TABLE companies ADD COLUMN $col $type");
+        }
+    }
+
     $conn->query("CREATE TABLE IF NOT EXISTS team_members (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, company_id INT, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL, role ENUM('Owner', 'Admin', 'Editor', 'Finance', 'Viewer') DEFAULT 'Viewer', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
     $conn->query("CREATE TABLE IF NOT EXISTS refresh_tokens (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, member_id INT DEFAULT NULL, token VARCHAR(255) NOT NULL, expires_at DATETIME NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS password_resets (email VARCHAR(255) NOT NULL, token VARCHAR(64) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
-    // Robust Migration for global team_members
+    // Ensure company_id in team_members
     $check = $conn->query("SHOW COLUMNS FROM team_members LIKE 'company_id'");
     if ($check->num_rows == 0) {
         $conn->query("ALTER TABLE team_members ADD COLUMN company_id INT AFTER user_id");
@@ -84,7 +156,6 @@ try {
     // Update ENUM to include Finance
     $conn->query("ALTER TABLE team_members MODIFY COLUMN role ENUM('Owner', 'Admin', 'Editor', 'Finance', 'Viewer') DEFAULT 'Viewer'");
 } catch (Exception $e) {
-    // Log error but don't crash the whole app if table already exists or permission denied
     error_log("Global Schema Error: " . $e->getMessage());
 }
 
@@ -99,110 +170,70 @@ function t($table)
 function ensureTenantSchema($conn, $company_id)
 {
     $prefix = "c" . $company_id . "_";
-    $res = $conn->query("SHOW TABLES LIKE '{$prefix}tax_profiles'");
-    
-    if ($res->num_rows == 0) {
-        $sql = "
-        CREATE TABLE IF NOT EXISTS `{$prefix}tax_profiles` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(100) NOT NULL, percentage DECIMAL(5,2) NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-        CREATE TABLE IF NOT EXISTS `{$prefix}clients` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, email VARCHAR(255), phone VARCHAR(50), billing_address TEXT, shipping_address TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-        CREATE TABLE IF NOT EXISTS `{$prefix}products` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, description TEXT, base_price DECIMAL(15,2) NOT NULL, category VARCHAR(100), unit VARCHAR(50) DEFAULT 'item', tax_profile_id INT DEFAULT NULL, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-        CREATE TABLE IF NOT EXISTS `{$prefix}invoices` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, client_id INT, invoice_number VARCHAR(50) NOT NULL, status ENUM('Draft', 'Sent', 'Paid', 'Overdue') DEFAULT 'Draft', template VARCHAR(50) DEFAULT 'minimal', issue_date DATE NOT NULL, due_date DATE, subtotal DECIMAL(15,2) NOT NULL, tax_total DECIMAL(15,2) NOT NULL, grand_total DECIMAL(15,2) NOT NULL, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES `{$prefix}clients`(id) ON DELETE SET NULL);
-        CREATE TABLE IF NOT EXISTS `{$prefix}invoice_items` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT NOT NULL, quantity INT NOT NULL, unit_price DECIMAL(15,2) NOT NULL, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', tax_profile_id INT DEFAULT NULL, FOREIGN KEY (invoice_id) REFERENCES `{$prefix}invoices`(id) ON DELETE CASCADE);
 
-        ";
-        $conn->multi_query($sql);
-        while ($conn->next_result()) { ; }
-    }
+    // 1. Independent table creation (IF NOT EXISTS is safe)
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}tax_profiles` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(100) NOT NULL, percentage DECIMAL(5,2) NOT NULL, description TEXT, is_default TINYINT(1) DEFAULT 0, is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}clients` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, email VARCHAR(255), phone VARCHAR(50), tax_id VARCHAR(100), billing_address TEXT, contact_person VARCHAR(255), contact_designation VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}products` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, name VARCHAR(255) NOT NULL, description TEXT, base_price DECIMAL(15,2) NOT NULL, category VARCHAR(100), unit VARCHAR(50) DEFAULT 'item', tax_profile_id INT, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}invoices` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, client_id INT, invoice_number VARCHAR(100) NOT NULL, status ENUM('Draft','Sent','Paid','Overdue','Accepted','Declined') DEFAULT 'Draft', template VARCHAR(50) DEFAULT 'minimal', issue_date DATE, due_date DATE, subtotal DECIMAL(15,2) DEFAULT 0.00, tax_total DECIMAL(15,2) DEFAULT 0.00, grand_total DECIMAL(15,2) DEFAULT 0.00, notes TEXT, is_recurring TINYINT(1) DEFAULT 0, recurrence_period ENUM('none','weekly','bi-weekly','monthly','yearly') DEFAULT 'none', next_generation_date DATE, last_generated_date DATE, recurrence_status ENUM('active','paused','completed') DEFAULT 'active', auto_send TINYINT(1) DEFAULT 0, public_token VARCHAR(100), type ENUM('Invoice','Quotation') DEFAULT 'Invoice', parent_invoice_id INT, client_notes TEXT, payment_method VARCHAR(100), payment_date DATE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}invoice_items` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT, quantity DECIMAL(15,2) DEFAULT 1.00, unit_price DECIMAL(15,2) DEFAULT 0.00, tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive', tax_profile_id INT)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}milestones` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, description TEXT, percentage DECIMAL(5,2), amount DECIMAL(15,2), status ENUM('Pending', 'Invoiced') DEFAULT 'Pending', generated_invoice_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}payments` (id INT AUTO_INCREMENT PRIMARY KEY, invoice_id INT NOT NULL, amount DECIMAL(15,2), gateway ENUM('Stripe', 'PayPal', 'Manual'), transaction_id VARCHAR(255), status VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}expenses` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, date DATE NOT NULL, description VARCHAR(255) NOT NULL, category VARCHAR(100), amount DECIMAL(15,2) NOT NULL, currency VARCHAR(3) DEFAULT 'USD', status VARCHAR(20) DEFAULT 'Paid', receipt_url TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+    $conn->query("CREATE TABLE IF NOT EXISTS `{$prefix}activity_logs` (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, action VARCHAR(100) NOT NULL, resource_type VARCHAR(50), resource_id INT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
-    // ─── ROBUST MIGRATION: Ensure all columns exist ───
-    $required_columns = [
-        'is_recurring' => "TINYINT(1) DEFAULT 0",
-        'recurrence_period' => "ENUM('none', 'weekly', 'bi-weekly', 'monthly', 'yearly') DEFAULT 'none'",
-        'next_generation_date' => "DATE DEFAULT NULL",
-        'last_generated_date' => "DATE DEFAULT NULL",
-        'recurrence_status' => "ENUM('active', 'paused', 'completed') DEFAULT 'active'",
-        'auto_send' => "TINYINT(1) DEFAULT 0",
-        'public_token' => "VARCHAR(64) UNIQUE",
-        'payment_method' => "VARCHAR(50) DEFAULT NULL",
-        'payment_date' => "DATE DEFAULT NULL",
-        'type' => "ENUM('Invoice', 'Quotation') DEFAULT 'Invoice'",
-        'client_notes' => "TEXT DEFAULT NULL",
-        'signature' => "LONGTEXT DEFAULT NULL",
-        'parent_invoice_id' => "INT DEFAULT NULL"
+    // 2. Robust Migration: Add missing columns to existing tables
+    $migrations = [
+        'invoices' => [
+            'type' => "ENUM('Invoice','Quotation') DEFAULT 'Invoice'",
+            'client_notes' => "TEXT",
+            'parent_invoice_id' => "INT",
+            'is_recurring' => "TINYINT(1) DEFAULT 0",
+            'recurrence_period' => "ENUM('none','weekly','bi-weekly','monthly','yearly') DEFAULT 'none'",
+            'public_token' => "VARCHAR(100)",
+            'payment_method' => "VARCHAR(100)",
+            'payment_date' => "DATE",
+            'currency_code' => "VARCHAR(3) DEFAULT 'USD'",
+            'exchange_rate' => "DECIMAL(10,4) DEFAULT 1.0000"
+        ],
+        'clients' => [
+            'contact_person' => "VARCHAR(255)",
+            'contact_designation' => "VARCHAR(255)",
+            'tax_id' => "VARCHAR(100)"
+        ],
+        'products' => [
+            'unit' => "VARCHAR(50) DEFAULT 'item'",
+            'tax_profile_id' => "INT",
+            'tax_method' => "ENUM('exclusive', 'inclusive') DEFAULT 'exclusive'",
+            'is_active' => "TINYINT(1) DEFAULT 1"
+        ],
+        'tax_profiles' => [
+            'tax_number' => "VARCHAR(100)",
+            'is_default' => "TINYINT(1) DEFAULT 0",
+            'is_active' => "TINYINT(1) DEFAULT 1"
+        ]
     ];
 
-    foreach ($required_columns as $col => $definition) {
-        try {
-            $check = $conn->query("SHOW COLUMNS FROM `{$prefix}invoices` LIKE '$col'");
+    foreach ($migrations as $table => $cols) {
+        foreach ($cols as $col => $definition) {
+            $check = $conn->query("SHOW COLUMNS FROM `{$prefix}{$table}` LIKE '$col'");
             if ($check->num_rows == 0) {
-                $conn->query("ALTER TABLE `{$prefix}invoices` ADD COLUMN $col $definition");
+                $conn->query("ALTER TABLE `{$prefix}{$table}` ADD COLUMN `$col` $definition");
             }
-        } catch (Exception $e) {
-            error_log("Migration column $col failed: " . $e->getMessage());
         }
     }
 
-    // Product Table Migrations
-    try {
-        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'tax_profile_id'");
-        if ($check->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN tax_profile_id INT DEFAULT NULL AFTER category");
-        }
-        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'unit'");
-        if ($check->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN unit VARCHAR(50) DEFAULT 'item' AFTER category");
-        }
-        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'tax_method'");
-        if ($check->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN tax_method ENUM('exclusive', 'inclusive') DEFAULT 'exclusive' AFTER tax_profile_id");
-        }
-        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}products` LIKE 'is_active'");
-        if ($check->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}products` ADD COLUMN is_active TINYINT(1) DEFAULT 1 AFTER tax_method");
-        }
-    } catch (Exception $e) {
-        error_log("Product migration failed: " . $e->getMessage());
-    }
-
-    // --- Create Milestones Table ---
-    try {
-        $conn->query("
-            CREATE TABLE IF NOT EXISTS `{$prefix}milestones` (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                invoice_id INT NOT NULL,
-                description TEXT NOT NULL,
-                percentage DECIMAL(5,2) NOT NULL,
-                amount DECIMAL(15,2) NOT NULL,
-                status ENUM('Pending', 'Invoiced') DEFAULT 'Pending',
-                generated_invoice_id INT DEFAULT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (invoice_id) REFERENCES `{$prefix}invoices`(id) ON DELETE CASCADE
-            )
-        ");
-    } catch (Exception $e) {
-        error_log("Milestones table creation failed: " . $e->getMessage());
-    }
-
-    // Client Table Migrations
-    try {
-        $check = $conn->query("SHOW COLUMNS FROM `{$prefix}clients` LIKE 'tax_id'");
-        if ($check->num_rows == 0) {
-            $conn->query("ALTER TABLE `{$prefix}clients` ADD COLUMN tax_id VARCHAR(100) AFTER phone");
-        }
-    } catch (Exception $e) {
-        error_log("Client migration failed: " . $e->getMessage());
-    }
-
-    // Patch any missing tokens immediately
-    try {
-        $conn->query("UPDATE `{$prefix}invoices` SET public_token = MD5(CONCAT(id, RAND())) WHERE public_token IS NULL OR public_token = ''");
-    } catch (Exception $e) {
-        error_log("Token patch failed: " . $e->getMessage());
-    }
+    // Patch any missing tokens
+    $conn->query("UPDATE `{$prefix}invoices` SET public_token = MD5(CONCAT(id, RAND())) WHERE public_token IS NULL OR public_token = ''");
 }
 
-$secret_key = "adrinix_super_secret_jwt_key_2026";
+// ─── JWT SECRET (from environment) ────────────────────────────────────────────
+$secret_key = getenv('JWT_SECRET') ?: 'CHANGE_ME_IN_PRODUCTION_' . md5(__DIR__);
 
+/**
+ * Authenticate a request by verifying the JWT token.
+ * CRITICAL: This now properly verifies the HMAC-SHA256 signature.
+ */
 function authenticate()
 {
     global $secret_key;
@@ -213,8 +244,24 @@ function authenticate()
         $jwt = $matches[1];
         $tokenParts = explode('.', $jwt);
         if (count($tokenParts) == 3) {
-            $payload = base64_decode($tokenParts[1]);
-            $payloadData = json_decode($payload, true);
+            $header = $tokenParts[0];
+            $payload = $tokenParts[1];
+            $signatureProvided = $tokenParts[2];
+
+            // ── VERIFY SIGNATURE ──────────────────────────────────────────
+            // Recompute the expected signature from header.payload using the secret
+            $expectedSignature = hash_hmac('sha256', $header . "." . $payload, $secret_key, true);
+            $expectedBase64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($expectedSignature));
+
+            if (!hash_equals($expectedBase64, $signatureProvided)) {
+                // Signature mismatch — token was tampered with or forged
+                http_response_code(401);
+                echo json_encode(['status' => 'error', 'message' => 'Invalid token signature']);
+                exit();
+            }
+
+            // ── DECODE AND VALIDATE PAYLOAD ───────────────────────────────
+            $payloadData = json_decode(base64_decode($payload), true);
             if ($payloadData && isset($payloadData['exp']) && $payloadData['exp'] >= time()) {
                 return $payloadData;
             }
@@ -228,8 +275,16 @@ function authenticate()
 function requireCompany($user_id)
 {
     global $conn, $t_prefix;
-    $headers = getallheaders();
-    $company_id = (int) ($headers['X-Company-Id'] ?? $headers['x-company-id'] ?? 0);
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    
+    // Robust header detection
+    $company_id = (int) (
+        $headers['X-Company-Id'] ?? 
+        $headers['x-company-id'] ?? 
+        $_SERVER['HTTP_X_COMPANY_ID'] ?? 
+        $_SERVER['HTTP_X_COMPANY_ID'] ?? 
+        0
+    );
 
     if (!$company_id) {
         http_response_code(400);
@@ -250,7 +305,25 @@ function requireCompany($user_id)
 
     $t_prefix = "c" . $company_id . "_";
     header("X-Tenant-Prefix: " . $t_prefix);
-    ensureTenantSchema($conn, $company_id);
+
+    // OPTIMIZATION: Only run schema migration if version mismatch
+    $currentSchemaVersion = 10; // Increment this whenever you add new migrations to ensureTenantSchema
+    if (($company['schema_version'] ?? 0) < $currentSchemaVersion) {
+        ensureTenantSchema($conn, $company_id);
+        $conn->query("UPDATE companies SET schema_version = $currentSchemaVersion WHERE id = $company_id");
+    }
+
     return $company;
+}
+
+/**
+ * Log an activity to the tenant-specific activity_logs table.
+ */
+function logActivity($conn, $cid, $user_id, $action, $res_type = null, $res_id = null, $details = null) {
+    $table = "c" . $cid . "_activity_logs";
+    $stmt = $conn->prepare("INSERT INTO `{$table}` (user_id, action, resource_type, resource_id, details) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("issis", $user_id, $action, $res_type, $res_id, $details);
+    $stmt->execute();
+    $stmt->close();
 }
 ?>

@@ -2,7 +2,7 @@
 // api/auth.php
 require_once 'db.php';
 
-$secret_key = "adrinix_super_secret_jwt_key_2026"; // In production, move to an env variable
+// $secret_key is loaded from environment in db.php — single source of truth
 
 function createJWT($payload, $secret) {
     $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
@@ -167,7 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute();
 
             // Send Email
-            $resetLink = "http://localhost:5175/login?token=" . $token;
+            $appUrl = getenv('APP_URL') ?: 'https://adrinix.syscura.co.uk';
+            $resetLink = $appUrl . "/login?token=" . $token;
             $subject = "Password Reset Request - Adrinix";
             $message = "You requested a password reset.\n\nClick here to reset it:\n" . $resetLink . "\n\nIf you didn't request this, ignore this email.";
             $headers = "From: noreply@adrinix.com";

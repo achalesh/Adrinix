@@ -29,6 +29,16 @@ export interface SettingsState {
     defaultTemplate: string;
     bank_details: string;
     website: string;
+    primaryColor: string;
+    accentColor: string;
+    layoutDensity: 'compact' | 'normal' | 'relaxed';
+    stripe_publishable_key: string;
+    stripe_secret_key: string;
+    paypal_client_id: string;
+    paypal_secret: string;
+    stripe_enabled: boolean;
+    paypal_enabled: boolean;
+    customPaymentLink: string;
   };
   localization: {
     currencyCode: string;
@@ -57,7 +67,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     registrationNumber: '',
     defaultTemplate: 'minimal',
     bank_details: '',
-    website: ''
+    website: '',
+    primaryColor: '#6366f1',
+    accentColor: '#818cf8',
+    layoutDensity: 'normal',
+    stripe_publishable_key: '',
+    stripe_secret_key: '',
+    paypal_client_id: '',
+    paypal_secret: '',
+    stripe_enabled: false,
+    paypal_enabled: false,
+    customPaymentLink: ''
   },
   localization: { currencyCode: 'USD', locale: 'en-US' },
   taxProfiles: [],

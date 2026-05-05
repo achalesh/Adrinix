@@ -31,13 +31,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({
   const company = propsCompany || storeCompany;
   const localization = propsLocalization || storeLocalization;
   
-  // Logic: 
-  // 1. If invoice has a specific template other than 'minimal', use it.
-  // 2. Otherwise, use the Company Global Default.
-  // 3. Fallback to 'minimal'.
-  const template = (invoiceMeta.template && invoiceMeta.template !== 'minimal') 
-    ? invoiceMeta.template 
-    : (company?.defaultTemplate || 'minimal');
+  const template = invoiceMeta.template || company?.defaultTemplate || 'minimal';
 
   // Template props bundle
   const templateProps = {
